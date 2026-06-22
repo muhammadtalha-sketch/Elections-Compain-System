@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { ActivityTimeline } from "@/components/activity-logs/activity-timeline";
 
 // FUTURE BACKEND INTEGRATION

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { SettingsPanel } from "@/components/settings/settings-panel";
 
 // FUTURE BACKEND INTEGRATION

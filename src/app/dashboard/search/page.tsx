@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { SearchPanel } from "@/components/search/search-panel";
 
 // FUTURE BACKEND INTEGRATION

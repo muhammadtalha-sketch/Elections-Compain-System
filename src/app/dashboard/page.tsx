@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { RegistrationTrendChart } from "@/components/dashboard/registration-trend-chart";
 import { GenderDistributionChart } from "@/components/dashboard/gender-distribution-chart";

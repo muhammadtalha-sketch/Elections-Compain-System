@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { AddMemberForm } from "@/components/add-member/add-member-form";
 
 // FUTURE BACKEND INTEGRATION
