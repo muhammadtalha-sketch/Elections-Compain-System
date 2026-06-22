@@ -1,0 +1,198 @@
+// TODO: Backend Integration
+// TODO: JWT Authentication
+// TODO: Login API — POST /api/auth/login
+// TODO: Redirect to dashboard after successful JWT token received
+// TODO: Store JWT in httpOnly cookie (not localStorage)
+
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, Vote, LogIn, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export default function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    // TODO: Backend Integration
+    // const res = await fetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+    // const { token } = await res.json()
+    // Set cookie and redirect
+    await new Promise((r) => setTimeout(r, 1200));
+    setIsLoading(false);
+    window.location.href = "/dashboard";
+  };
+
+  return (
+    <div className="min-h-screen flex bg-background">
+      {/* Left panel - decorative */}
+      <div className="hidden lg:flex w-1/2 gradient-primary flex-col justify-between p-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-10 w-72 h-72 rounded-full bg-white blur-3xl" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-white blur-3xl" />
+        </div>
+
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <Vote className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-white font-bold text-lg">ECS Portal</span>
+          </div>
+          <p className="text-white/70 text-sm">Election Campaign System</p>
+        </div>
+
+        <div className="relative z-10 space-y-6">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h2 className="text-white text-3xl font-bold leading-tight">
+              Manage your campaign <br /> with precision & ease.
+            </h2>
+            <p className="text-white/70 text-sm mt-3 leading-relaxed">
+              Track members, analyze trends, and manage your election campaign data efficiently with our enterprise-grade platform.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { value: "1,027+", label: "Members" },
+              { value: "15", label: "Areas" },
+              { value: "7", label: "Team Users" },
+            ].map((stat) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/20"
+              >
+                <p className="text-white text-xl font-bold">{stat.value}</p>
+                <p className="text-white/60 text-xs mt-0.5">{stat.label}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          <p className="text-white/40 text-xs">© 2024 ECS Portal — Sialkot Division</p>
+        </div>
+      </div>
+
+      {/* Right panel - login form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-sm"
+        >
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+              <Vote className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-foreground">ECS Portal</span>
+          </div>
+
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
+            <p className="text-muted-foreground text-sm mt-1">Sign in to your ECS account</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <Label className="text-xs font-semibold mb-1.5 block">Email Address</Label>
+              <Input
+                type="email"
+                placeholder="arif.mehmood@ecs.pk"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-10 text-sm"
+                required
+                autoComplete="email"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-xs font-semibold">Password</Label>
+                <Link href="#" className="text-xs text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-10 text-sm pr-10"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-10 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 mt-2"
+            >
+              {isLoading ? (
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+                    className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                  />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                </>
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-xs text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="text-primary font-semibold hover:underline">
+                Create account
+              </Link>
+            </p>
+          </div>
+
+          <div className="mt-6 flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
+            <Shield className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <p className="text-[10px] text-muted-foreground">
+              {/* TODO: JWT Authentication */}
+              Demo mode: Authentication is disabled. Click Sign In to access dashboard.
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

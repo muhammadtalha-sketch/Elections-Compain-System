@@ -1,0 +1,33 @@
+"use client";
+
+import { useState } from "react";
+import { Sidebar } from "@/components/layout/sidebar";
+import { TopNavbar } from "@/components/layout/top-navbar";
+
+// TODO: Backend Integration — JWT Authentication
+// TODO: Check for valid JWT token, redirect to /login if missing or expired
+// TODO: Initialize user context from JWT payload (name, role, permissions)
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      <Sidebar isMobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
+
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <TopNavbar onMenuToggle={() => setMobileOpen(true)} />
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 lg:p-6 max-w-[1600px] mx-auto">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
