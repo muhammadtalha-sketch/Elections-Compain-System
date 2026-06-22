@@ -1,15 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Users, UserCheck, UserX, CalendarDays, Calendar, MapPin, TrendingUp } from "lucide-react";
-import { DASHBOARD_STATS } from "@/lib/mock-data";
+import { Users, UserCheck, UserX, CalendarDays, Calendar, MapPin, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { cn } from "@/lib/utils";
 
-const cards = [
+const CARD_CONFIG = [
   {
+    key: "total" as const,
     title: "Total Members",
-    value: DASHBOARD_STATS.totalMembers.toLocaleString(),
-    change: "+12.5%",
-    trend: "up",
+    getValue: (s: ReturnType<typeof useDashboardStats>["stats"]) => s?.total.toLocaleString() ?? "—",
+    getChange: () => "All time",
+    trend: "neutral" as const,
     icon: Users,
     gradient: "from-[#0F766E] to-[#0D9488]",
     bgGlow: "rgba(15, 118, 110, 0.15)",
@@ -21,10 +23,12 @@ const cards = [
     changeColor: "text-teal-600 dark:text-teal-400",
   },
   {
+    key: "male" as const,
     title: "Male Members",
-    value: DASHBOARD_STATS.maleMembers.toLocaleString(),
-    change: "+8.3%",
-    trend: "up",
+    getValue: (s: ReturnType<typeof useDashboardStats>["stats"]) => s?.male.toLocaleString() ?? "—",
+    getChange: (s: ReturnType<typeof useDashboardStats>["stats"]) =>
+      s ? `${s.total > 0 ? Math.round((s.male / s.total) * 100) : 0}% of total` : "—",
+    trend: "up" as const,
     icon: UserCheck,
     gradient: "from-[#1D4ED8] to-[#3B82F6]",
     bgGlow: "rgba(29, 78, 216, 0.12)",
@@ -36,10 +40,12 @@ const cards = [
     changeColor: "text-blue-600 dark:text-blue-400",
   },
   {
+    key: "female" as const,
     title: "Female Members",
-    value: DASHBOARD_STATS.femaleMembers.toLocaleString(),
-    change: "+18.7%",
-    trend: "up",
+    getValue: (s: ReturnType<typeof useDashboardStats>["stats"]) => s?.female.toLocaleString() ?? "—",
+    getChange: (s: ReturnType<typeof useDashboardStats>["stats"]) =>
+      s ? `${s.total > 0 ? Math.round((s.female / s.total) * 100) : 0}% of total` : "—",
+    trend: "up" as const,
     icon: UserX,
     gradient: "from-[#9D174D] to-[#EC4899]",
     bgGlow: "rgba(236, 72, 153, 0.12)",
@@ -51,10 +57,11 @@ const cards = [
     changeColor: "text-pink-600 dark:text-pink-400",
   },
   {
+    key: "today" as const,
     title: "Today's Registrations",
-    value: DASHBOARD_STATS.todayRegistrations.toString(),
-    change: "+4 since 9am",
-    trend: "up",
+    getValue: (s: ReturnType<typeof useDashboardStats>["stats"]) => s?.todayCount.toString() ?? "—",
+    getChange: () => new Date().toLocaleDateString("en-PK", { weekday: "short", month: "short", day: "numeric" }),
+    trend: "up" as const,
     icon: CalendarDays,
     gradient: "from-[#D97706] to-[#F59E0B]",
     bgGlow: "rgba(245, 158, 11, 0.12)",
@@ -66,10 +73,11 @@ const cards = [
     changeColor: "text-amber-600 dark:text-amber-400",
   },
   {
+    key: "month" as const,
     title: "This Month",
-    value: DASHBOARD_STATS.monthRegistrations.toString(),
-    change: "Dec 2024",
-    trend: "neutral",
+    getValue: (s: ReturnType<typeof useDashboardStats>["stats"]) => s?.thisMonthCount.toString() ?? "—",
+    getChange: () => new Date().toLocaleDateString("en-PK", { month: "long", year: "numeric" }),
+    trend: "neutral" as const,
     icon: Calendar,
     gradient: "from-[#6D28D9] to-[#8B5CF6]",
     bgGlow: "rgba(139, 92, 246, 0.12)",
@@ -81,10 +89,12 @@ const cards = [
     changeColor: "text-violet-600 dark:text-violet-400",
   },
   {
+    key: "topArea" as const,
     title: "Top Area",
-    value: DASHBOARD_STATS.topArea,
-    change: "156 members",
-    trend: "neutral",
+    getValue: (s: ReturnType<typeof useDashboardStats>["stats"]) => s?.topArea ?? "—",
+    getChange: (s: ReturnType<typeof useDashboardStats>["stats"]) =>
+      s ? `${s.topAreaCount} members` : "—",
+    trend: "neutral" as const,
     icon: MapPin,
     gradient: "from-[#065F46] to-[#10B981]",
     bgGlow: "rgba(16, 185, 129, 0.12)",
@@ -97,42 +107,87 @@ const cards = [
   },
 ];
 
+function StatCardSkeleton({ delay }: { delay: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay }}
+      className="relative overflow-hidden rounded-2xl border border-border bg-card p-4"
+    >
+      <div className="w-9 h-9 rounded-xl bg-muted animate-pulse mb-3" />
+      <div className="h-3 w-20 rounded bg-muted animate-pulse mb-2" />
+      <div className="h-6 w-14 rounded bg-muted animate-pulse mb-3" />
+      <div className="h-2.5 w-16 rounded bg-muted animate-pulse" />
+    </motion.div>
+  );
+}
+
 export function StatsCards() {
+  const { stats, loading, error, refetch } = useDashboardStats();
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 flex items-center gap-4">
+        <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-foreground">Failed to load statistics</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
+        </div>
+        <button
+          onClick={refetch}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+        >
+          <RefreshCw className="w-3 h-3" /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        {CARD_CONFIG.map((c, i) => <StatCardSkeleton key={c.key} delay={i * 0.05} />)}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-      {cards.map((card, index) => (
+      {CARD_CONFIG.map((card, index) => (
         <motion.div
-          key={card.title}
+          key={card.key}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: index * 0.07, ease: "easeOut" }}
           whileHover={{ y: -3, transition: { duration: 0.2 } }}
-          className={`
-            relative overflow-hidden rounded-2xl border border-border
-            bg-gradient-to-br ${card.lightBg} dark:${card.darkBg}
-            p-4 cursor-default group
-          `}
+          className={cn(
+            "relative overflow-hidden rounded-2xl border border-border",
+            `bg-gradient-to-br ${card.lightBg} dark:${card.darkBg}`,
+            "p-4 cursor-default group"
+          )}
           style={{ boxShadow: `0 4px 24px ${card.bgGlow}` }}
         >
-          {/* Background decorative circle */}
           <div
             className="absolute -right-4 -top-4 w-20 h-20 rounded-full opacity-10 transition-transform duration-300 group-hover:scale-125"
-            style={{ background: card.gradient.replace("from-", "").split(" ")[0] }}
+            style={{ background: card.gradient.split(" ")[0].replace("from-[", "").replace("]", "") }}
           />
 
           <div className="relative">
-            <div className={`inline-flex items-center justify-center w-9 h-9 rounded-xl ${card.iconBg} mb-3`}>
-              <card.icon className={`w-4.5 h-4.5 ${card.iconColor}`} />
+            <div className={cn("inline-flex items-center justify-center w-9 h-9 rounded-xl mb-3", card.iconBg)}>
+              <card.icon className={cn("w-4 h-4", card.iconColor)} />
             </div>
 
             <p className="text-xs font-medium text-muted-foreground mb-1 leading-none">{card.title}</p>
-            <p className={`text-xl font-bold ${card.valueColor} leading-none mb-2 tracking-tight`}>
-              {card.value}
+            <p className={cn("text-xl font-bold leading-none mb-2 tracking-tight", card.valueColor)}>
+              {card.getValue(stats)}
             </p>
 
             <div className="flex items-center gap-1">
-              {card.trend === "up" && <TrendingUp className={`w-3 h-3 ${card.changeColor}`} />}
-              <span className={`text-[10px] font-semibold ${card.changeColor}`}>{card.change}</span>
+              {card.trend === "up" && <TrendingUp className={cn("w-3 h-3", card.changeColor)} />}
+              <span className={cn("text-[10px] font-semibold", card.changeColor)}>
+                {card.getChange(stats)}
+              </span>
             </div>
           </div>
         </motion.div>

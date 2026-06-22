@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -37,6 +38,17 @@ export default function RootLayout({
         >
           <TooltipProvider delay={200}>
             {children}
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              duration={4000}
+              toastOptions={{
+                classNames: {
+                  toast: "font-sans text-sm",
+                },
+              }}
+            />
           </TooltipProvider>
         </ThemeProvider>
       </body>
