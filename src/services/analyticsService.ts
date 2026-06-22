@@ -151,17 +151,17 @@ export async function getAreaDistribution(): Promise<AreaDataPoint[]> {
 
   if (error) throw new Error(error.message)
 
-  const buckets: Record<string, { total: number; male: number; female: number }> = {}
+  const buckets: Record<string, { count: number; male: number; female: number }> = {}
   ;(data ?? []).forEach((m) => {
     const area = resolveArea(m.area, m.address)
-    if (!buckets[area]) buckets[area] = { total: 0, male: 0, female: 0 }
-    buckets[area].total++
+    if (!buckets[area]) buckets[area] = { count: 0, male: 0, female: 0 }
+    buckets[area].count++
     if (m.gender === 'Male')        buckets[area].male++
     else if (m.gender === 'Female') buckets[area].female++
   })
 
   return Object.entries(buckets)
-    .sort((a, b) => b[1].total - a[1].total)
+    .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 10)
     .map(([area, counts]) => ({ area, ...counts }))
 }

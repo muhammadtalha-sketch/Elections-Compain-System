@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Member } from '@/types/database.types'
+import type { Gender, Member, MemberUpdate } from '@/types/database.types'
 import { resolveArea } from '@/lib/area-utils'
 
 // ─── Public interface (camelCase, kept for backward compat with hooks/components) ─
@@ -138,10 +138,10 @@ export async function addMember(
 }
 
 export async function updateMember(id: string, updates: Partial<FirestoreMember>): Promise<void> {
-  const patch: Record<string, unknown> = {}
+  const patch: MemberUpdate = {}
   if (updates.name !== undefined)              patch.name = updates.name
   if (updates.fatherName !== undefined)        patch.father_name = updates.fatherName || null
-  if (updates.gender !== undefined)            patch.gender = updates.gender || null
+  if (updates.gender !== undefined)            patch.gender = (updates.gender as Gender) || null
   if (updates.dob !== undefined)               patch.dob = updates.dob || null
   if (updates.birthYear !== undefined)         patch.birth_year = updates.birthYear || null
   if (updates.address !== undefined)           patch.address = updates.address || null
@@ -165,7 +165,7 @@ export async function deleteMember(id: string): Promise<void> {
 export async function searchMembers(filters: MemberSearchFilters): Promise<FirestoreMember[]> {
   let query = supabase.from('members').select('*')
 
-  if (filters.gender)            query = query.eq('gender', filters.gender)
+  if (filters.gender)            query = query.eq('gender', filters.gender as Gender)
   if (filters.area)              query = query.ilike('area', `%${filters.area}%`)
   if (filters.birthYear)         query = query.eq('birth_year', filters.birthYear)
   if (filters.requestMemberBar)  query = query.eq('request_member_bar', filters.requestMemberBar)

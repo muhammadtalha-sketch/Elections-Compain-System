@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { UserRole } from '@/types/database.types'
+import type { ProfileUpdate, UserRole } from '@/types/database.types'
 
 export interface FirestoreUser {
   id?: string
@@ -77,7 +77,7 @@ export async function updateUserProfile(
   id: string,
   updates: Partial<FirestoreUser>
 ): Promise<void> {
-  const patch: Record<string, unknown> = {}
+  const patch: ProfileUpdate = {}
   if (updates.name !== undefined)   patch.full_name = updates.name
   if (updates.email !== undefined)  patch.email = updates.email
   if (updates.phone !== undefined)  patch.phone = updates.phone || null

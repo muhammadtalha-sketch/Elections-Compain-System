@@ -53,6 +53,7 @@ export interface Database {
           is_active?:  boolean
           updated_at?: string
         }
+        Relationships: []
       }
 
       members: {
@@ -113,6 +114,7 @@ export interface Database {
           updated_by?:          string | null
           updated_at?:          string
         }
+        Relationships: []
       }
 
       activity_logs: {
@@ -134,7 +136,15 @@ export interface Database {
           description?: string | null
           created_at?:  string
         }
-        Update: never
+        Update: {
+          user_id?:     string | null
+          action?:      ActivityAction
+          table_name?:  string | null
+          record_id?:   string | null
+          description?: string | null
+          created_at?:  string
+        }
+        Relationships: []
       }
 
       import_history: {
@@ -164,6 +174,7 @@ export interface Database {
           failed_records?:      number
           status?:              ImportStatus
         }
+        Relationships: []
       }
 
       saved_searches: {
@@ -185,6 +196,7 @@ export interface Database {
           search_name?: string
           filters?:     Json
         }
+        Relationships: []
       }
 
       dashboard_stats_cache: {
@@ -204,6 +216,7 @@ export interface Database {
           stat_value?:   Json
           last_updated?: string
         }
+        Relationships: []
       }
     }
 
@@ -216,6 +229,7 @@ export interface Database {
           today_registrations:          number
           current_month_registrations:  number
         }
+        Relationships: []
       }
       area_statistics_view: {
         Row: {
@@ -225,6 +239,7 @@ export interface Database {
           female_count:  number
           other_count:   number
         }
+        Relationships: []
       }
     }
 
