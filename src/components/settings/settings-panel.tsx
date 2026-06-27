@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  User, Bell, Palette, Shield, Save, Camera, AlertTriangle,
+  User, Bell, Palette, Shield, Save, Camera,
   Monitor, Sun, Moon, Mail, MessageSquare, Smartphone,
+  Eye, EyeOff, AlertCircle, LogOut, Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -19,6 +20,113 @@ import {
 import { useTheme } from "next-themes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/auth-context";
+
+function SecurityContent() {
+  const { signOut } = useAuth();
+  const [form,    setForm]    = useState({ next: "", confirm: "" });
+  const [show,    setShow]    = useState({ next: false, confirm: false });
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState("");
+  const [confirm, setConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const toggle = (k: keyof typeof show) => () => setShow((p) => ({ ...p, [k]: !p[k] }));
+
+  const changePassword = async () => {
+    if (form.next.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (form.next !== form.confirm) { setError("Passwords do not match."); return; }
+    setSaving(true);
+    setError("");
+    const { error: err } = await supabase.auth.updateUser({ password: form.next });
+    if (err) {
+      setError(err.message);
+    } else {
+      toast.success("Password changed successfully");
+      setForm({ next: "", confirm: "" });
+    }
+    setSaving(false);
+  };
+
+  const doLogout = async () => {
+    setLoggingOut(true);
+    await signOut();
+  };
+
+  return (
+    <>
+      {/* Change Password */}
+      <div>
+        <p className="text-xs font-semibold text-foreground mb-3">Change Password</p>
+        <div className="space-y-3 max-w-sm">
+          {error && (
+            <div className="flex items-center gap-2.5 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <p className="text-xs font-medium">{error}</p>
+            </div>
+          )}
+          {(["next", "confirm"] as const).map((key) => (
+            <div key={key}>
+              <Label className="text-xs mb-1.5 block">
+                {key === "next" ? "New Password" : "Confirm Password"}
+              </Label>
+              <div className="relative">
+                <Input
+                  type={show[key] ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={form[key]}
+                  onChange={(e) => { setForm((p) => ({ ...p, [key]: e.target.value })); setError(""); }}
+                  className="h-9 text-sm pr-10"
+                  autoComplete="new-password"
+                />
+                <button type="button" onClick={toggle(key)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {show[key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+          <Button
+            size="sm"
+            className="gap-2 h-9"
+            onClick={changePassword}
+            disabled={!form.next || !form.confirm || saving}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+            {saving ? "Updating…" : "Update Password"}
+          </Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Logout */}
+      <div>
+        <p className="text-xs font-semibold text-foreground mb-1">Logout</p>
+        <p className="text-xs text-muted-foreground mb-3">Sign out of your account on this device.</p>
+        {!confirm ? (
+          <Button variant="destructive" size="sm" className="gap-2 h-9" onClick={() => setConfirm(true)}>
+            <LogOut className="w-4 h-4" /> Logout
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-foreground font-medium">Are you sure you want to logout?</p>
+            <div className="flex gap-2">
+              <Button variant="destructive" size="sm" className="gap-2 h-9" onClick={doLogout} disabled={loggingOut}>
+                {loggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                {loggingOut ? "Signing out…" : "Yes, Logout"}
+              </Button>
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setConfirm(false)} disabled={loggingOut}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
 
 export function SettingsPanel() {
   const { theme, setTheme } = useTheme();
@@ -71,7 +179,7 @@ export function SettingsPanel() {
               <div>
                 <p className="font-semibold text-foreground">Arif Mehmood</p>
                 <p className="text-xs text-muted-foreground">arif.mehmood@ecs.pk</p>
-                <Badge className="mt-1 text-[10px] h-4 px-1.5 bg-primary/10 text-primary border-primary/20">Administrator</Badge>
+                <span className="mt-1 inline-block text-[10px] h-4 px-1.5 bg-primary/10 text-primary border border-primary/20 rounded-md">Administrator</span>
               </div>
             </div>
 
@@ -252,64 +360,8 @@ export function SettingsPanel() {
             <p className="text-xs text-muted-foreground mt-0.5">Authentication and access control</p>
           </div>
 
-          <div className="p-6">
-            {/* Backend not connected notice */}
-            <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 mb-6">
-              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                  Backend authentication not connected yet.
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-400/80 mt-1">
-                  JWT authentication, password hashing, and session management will be enabled after backend integration.
-                </p>
-                {/* TODO: Backend Integration
-                    - JWT Authentication
-                    - bcrypt password hashing
-                    - Refresh token rotation
-                    - Session management
-                    - 2FA (TOTP) */}
-              </div>
-            </div>
-
-            <div className="space-y-4 opacity-50 pointer-events-none">
-              <div>
-                <p className="text-xs font-semibold text-foreground mb-3">Change Password</p>
-                <div className="space-y-2 max-w-sm">
-                  <div>
-                    <Label className="text-xs mb-1 block">Current Password</Label>
-                    <Input type="password" placeholder="••••••••" className="h-9 text-sm" disabled />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">New Password</Label>
-                    <Input type="password" placeholder="••••••••" className="h-9 text-sm" disabled />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Confirm Password</Label>
-                    <Input type="password" placeholder="••••••••" className="h-9 text-sm" disabled />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <p className="text-xs font-semibold text-foreground mb-3">Two-Factor Authentication</p>
-                <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-muted/20 max-w-sm">
-                  <div>
-                    <p className="text-xs font-semibold">Authenticator App</p>
-                    <p className="text-[10px] text-muted-foreground">Use TOTP authenticator</p>
-                  </div>
-                  <Switch disabled />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <Badge variant="outline" className="text-xs gap-1">
-                <Shield className="w-3 h-3" /> Requires backend integration
-              </Badge>
-            </div>
+          <div className="p-6 space-y-6">
+            <SecurityContent />
           </div>
         </motion.div>
       </TabsContent>
