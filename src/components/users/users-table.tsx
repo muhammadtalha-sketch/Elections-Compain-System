@@ -15,7 +15,6 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AccessDenied } from "@/components/ui/access-denied";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/auth-context";
@@ -176,7 +175,6 @@ export function UsersTable() {
   const [search,     setSearch]     = useState("");
   const [showCreate, setShowCreate] = useState(false);
 
-  const canView   = can(currentRole, "viewUsers");
   const canManage = can(currentRole, "manageUsers");
 
   const load = useCallback(async () => {
@@ -222,10 +220,6 @@ export function UsersTable() {
     (u.email     ?? "").toLowerCase().includes(search.toLowerCase()) ||
     u.role.toLowerCase().includes(search.toLowerCase())
   );
-
-  if (!canView) {
-    return <AccessDenied description="Only Admins can manage users." />;
-  }
 
   if (loading) {
     return (

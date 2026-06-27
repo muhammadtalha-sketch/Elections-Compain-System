@@ -23,16 +23,19 @@ const PERMISSIONS: Record<string, UserRole[]> = {
   importData:       ['Super Admin', 'Admin'],
   exportData:       ['Super Admin', 'Admin', 'User'],
 
-  // Analytics
+  // Analytics — all roles
   viewAnalytics:    ['Super Admin', 'Admin', 'User'],
 
-  // Users
-  viewUsers:        ['Super Admin', 'Admin'],
+  // Users — all roles can VIEW the users list; only Admin+ can manage
+  viewUsers:        ['Super Admin', 'Admin', 'User'],
   manageUsers:      ['Super Admin', 'Admin'],
 
-  // Logs & settings
+  // Logs
   viewActivityLogs: ['Super Admin', 'Admin'],
-  manageSettings:   ['Super Admin'],
+
+  // Settings — all roles manage their OWN settings (password, avatar, name, etc.)
+  // System-wide settings are enforced inside the settings panel itself, not here.
+  manageSettings:   ['Super Admin', 'Admin', 'User'],
 }
 
 export type Permission = keyof typeof PERMISSIONS
