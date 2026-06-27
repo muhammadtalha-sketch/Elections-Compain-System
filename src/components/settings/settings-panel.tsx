@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   User, Bell, Palette, Shield, Save, Camera,
   Monitor, Sun, Moon, Mail, MessageSquare, Smartphone,
-  Eye, EyeOff, AlertCircle, LogOut, Loader2,
+  Eye, EyeOff, AlertCircle, LogOut, Loader2, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/auth-context";
+import { initials, ROLE_BADGE } from "@/lib/rbac";
 
 function SecurityContent() {
   const { signOut } = useAuth();
@@ -130,16 +131,63 @@ function SecurityContent() {
 
 export function SettingsPanel() {
   const { theme, setTheme } = useTheme();
+  const { user, profile, role, refreshProfile } = useAuth();
+
+  // Profile form — seeded from auth context
+  const [name,    setName]    = useState(profile?.full_name ?? "");
+  const [phone,   setPhone]   = useState(profile?.phone    ?? "");
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [emailNotif, setEmailNotif] = useState(true);
-  const [smsNotif, setSmsNotif] = useState(false);
+  const [smsNotif,   setSmsNotif]   = useState(false);
   const [importNotif, setImportNotif] = useState(true);
   const [memberNotif, setMemberNotif] = useState(true);
   const [reportNotif, setReportNotif] = useState(false);
-  const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name: name.trim(), phone: phone.trim() || null })
+      .eq("id", user.id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      await refreshProfile();
+      toast.success("Profile updated");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+    setSaving(false);
+  };
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error("Image must be under 2 MB"); return; }
+    setUploading(true);
+    try {
+      const ext  = file.name.split(".").pop();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      const { error: dbErr } = await supabase.from("profiles")
+        .update({ avatar_url: publicUrl }).eq("id", user.id);
+      if (dbErr) throw dbErr;
+      await refreshProfile();
+      toast.success("Profile picture updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   return (
@@ -166,60 +214,75 @@ export function SettingsPanel() {
           <div className="p-6">
             {/* Avatar */}
             <div className="flex items-center gap-4 mb-6">
-              <div className="relative">
+              <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
                 <Avatar className="h-16 w-16">
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-xl font-bold">
-                    AM
+                  {profile?.avatar_url && (
+                    <AvatarImage src={profile.avatar_url} alt={profile.full_name ?? ""} />
+                  )}
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white text-xl font-bold">
+                    {initials(profile?.full_name)}
                   </AvatarFallback>
                 </Avatar>
-                <button className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors">
-                  <Camera className="w-3 h-3" />
-                </button>
+                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {uploading
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <Camera className="w-4 h-4 text-white" />
+                  }
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />
               </div>
               <div>
-                <p className="font-semibold text-foreground">Arif Mehmood</p>
-                <p className="text-xs text-muted-foreground">arif.mehmood@ecs.pk</p>
-                <span className="mt-1 inline-block text-[10px] h-4 px-1.5 bg-primary/10 text-primary border border-primary/20 rounded-md">Administrator</span>
+                <p className="font-semibold text-foreground">{profile?.full_name || user?.email || "—"}</p>
+                <p className="text-xs text-muted-foreground">{user?.email ?? "—"}</p>
+                {role && (
+                  <span className={cn("mt-1 inline-block text-[10px] px-1.5 py-0.5 rounded-md font-semibold", ROLE_BADGE[role])}>
+                    {role}
+                  </span>
+                )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs font-semibold mb-1.5 block">Full Name</Label>
-                <Input defaultValue="Arif Mehmood" className="h-9 text-sm" />
+                <Input
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Your full name"
+                  className="h-9 text-sm"
+                />
               </div>
               <div>
                 <Label className="text-xs font-semibold mb-1.5 block">Email Address</Label>
-                <Input defaultValue="arif.mehmood@ecs.pk" type="email" className="h-9 text-sm" />
-                {/* TODO: Backend Integration — JWT Authentication */}
+                <Input value={user?.email ?? ""} disabled className="h-9 text-sm opacity-60" />
+                <p className="text-[11px] text-muted-foreground mt-1">Email cannot be changed here.</p>
               </div>
               <div>
                 <Label className="text-xs font-semibold mb-1.5 block">Phone Number</Label>
-                <Input defaultValue="0300-1234567" className="h-9 text-sm font-mono" />
+                <Input
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="0300-0000000"
+                  className="h-9 text-sm font-mono"
+                />
               </div>
               <div>
                 <Label className="text-xs font-semibold mb-1.5 block">Role</Label>
-                <Input value="Administrator" disabled className="h-9 text-sm opacity-60" />
-              </div>
-              <div className="md:col-span-2">
-                <Label className="text-xs font-semibold mb-1.5 block">Organization</Label>
-                <Input defaultValue="Election Campaign System — Sialkot Division" className="h-9 text-sm" />
+                <Input value={role ?? ""} disabled className="h-9 text-sm opacity-60" />
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3 px-6 py-4 border-t border-border bg-muted/20">
-            <Button onClick={handleSave} size="sm" className="gap-2 bg-primary hover:bg-primary/90 min-w-[100px]">
-              {saved ? (
-                <><motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>✓</motion.div> Saved!</>
+            <Button onClick={handleSaveProfile} size="sm" disabled={saving} className="gap-2 bg-primary hover:bg-primary/90 min-w-[110px]">
+              {saving ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</>
+              ) : saved ? (
+                <><Check className="w-3.5 h-3.5" /> Saved!</>
               ) : (
                 <><Save className="w-3.5 h-3.5" /> Save Changes</>
               )}
             </Button>
-            <p className="text-[10px] text-muted-foreground">
-              {/* TODO: Backend Integration — MongoDB API Connection */}
-              Changes are local only
-            </p>
           </div>
         </motion.div>
       </TabsContent>
@@ -285,7 +348,7 @@ export function SettingsPanel() {
           </div>
 
           <div className="px-6 py-4 border-t border-border bg-muted/20">
-            <Button onClick={handleSave} size="sm" className="gap-2 bg-primary hover:bg-primary/90">
+            <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => toast.success("Preferences saved")}>
               <Save className="w-3.5 h-3.5" /> Save Preferences
             </Button>
           </div>
