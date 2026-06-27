@@ -21,6 +21,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request })
   }
 
+  if (/\/(rest|auth)\/v\d/i.test(supabaseUrl)) {
+    console.error(
+      '[ECS Middleware] NEXT_PUBLIC_SUPABASE_URL has a path suffix — this causes auth to hit /rest/v1/auth/v1/* (404).\n' +
+      `Current value: ${supabaseUrl}\n` +
+      'Fix: set it to https://jykopfoifmfdoowbaxoa.supabase.co (no path suffix).'
+    )
+    return NextResponse.next({ request })
+  }
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {

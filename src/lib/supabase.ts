@@ -14,9 +14,23 @@ function getClient(): SupabaseClient {
       throw new Error(
         '[ECS] Missing NEXT_PUBLIC_SUPABASE_URL.\n' +
         'Create .env.local with:\n' +
-        '  NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co\n' +
+        '  NEXT_PUBLIC_SUPABASE_URL=https://jykopfoifmfdoowbaxoa.supabase.co\n' +
         '  NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>\n' +
         'Then restart the dev server. On Vercel, add these in Project Settings → Environment Variables.'
+      )
+    }
+
+    // Guard against a common mistake: copying the REST or Auth API URL from the
+    // Supabase dashboard instead of the plain Project URL.
+    // Wrong: https://xxx.supabase.co/rest/v1  → auth calls go to /rest/v1/auth/v1/... (404)
+    // Wrong: https://xxx.supabase.co/auth/v1
+    // Correct: https://xxx.supabase.co
+    if (/\/(rest|auth)\/v\d/i.test(supabaseUrl)) {
+      throw new Error(
+        '[ECS] NEXT_PUBLIC_SUPABASE_URL contains a path suffix that must be removed.\n' +
+        `Current value: ${supabaseUrl}\n` +
+        'Required value: https://jykopfoifmfdoowbaxoa.supabase.co\n' +
+        'Use the "Project URL" from Supabase Dashboard → Settings → API, not the "API URL (REST)".'
       )
     }
 
