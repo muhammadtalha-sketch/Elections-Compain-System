@@ -34,6 +34,7 @@ interface Filters {
   regFrom: string;
   regTo: string;
   requestMemberBar: string;
+  interestStatus: string;
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -41,6 +42,7 @@ const EMPTY_FILTERS: Filters = {
   name: "", fatherName: "",
   gender: "all", birthYear: "all", area: "all",
   regFrom: "", regTo: "", requestMemberBar: "all",
+  interestStatus: "all",
 };
 
 export function SearchPanel() {
@@ -78,6 +80,7 @@ export function SearchPanel() {
         regFrom: filters.regFrom || undefined,
         regTo: filters.regTo || undefined,
         requestMemberBar: filters.requestMemberBar !== "all" ? filters.requestMemberBar : undefined,
+        interestStatus: filters.interestStatus !== "all" ? filters.interestStatus : undefined,
       });
       setResults(data);
       if (data.length === 0) {
@@ -287,6 +290,25 @@ export function SearchPanel() {
               </Select>
             </div>
           </div>
+
+          {/* Campaign Interest */}
+          <div className="space-y-3 p-3 rounded-xl border border-border/60 bg-muted/20">
+            <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+              <ChevronRight className="w-3 h-3 text-primary" /> Campaign Interest
+            </p>
+            <div>
+              <Label className="text-[10px] text-muted-foreground mb-1 block">Interest Status</Label>
+              <Select value={filters.interestStatus} onValueChange={(v) => { if (v) setField("interestStatus")(v); }}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="Interested">Interested</SelectItem>
+                  <SelectItem value="Not Interested">Not Interested</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
         {/* Action buttons */}
@@ -349,7 +371,7 @@ export function SearchPanel() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/40 border-b border-border">
-                      {["Serial #", "Name", "Father Name", "Gender", "DOB", "Area", "Phone", "Member Bar", "Reg. Date"].map((h) => (
+                      {["Serial #", "Name", "Father Name", "Gender", "DOB", "Area", "Phone", "Member Bar", "Reg. Date", "Interest"].map((h) => (
                         <th key={h} className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -385,6 +407,16 @@ export function SearchPanel() {
                         <td className="px-3 py-2.5 font-mono text-muted-foreground">{member.phoneNumber}</td>
                         <td className="px-3 py-2.5 text-muted-foreground max-w-[120px] truncate">{member.requestMemberBar}</td>
                         <td className="px-3 py-2.5 font-mono text-muted-foreground">{member.registrationDate}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={cn(
+                            "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                            member.interestStatus === "Interested"     && "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+                            member.interestStatus === "Not Interested" && "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+                            member.interestStatus === "Pending"        && "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+                          )}>
+                            {member.interestStatus ?? "Pending"}
+                          </span>
+                        </td>
                       </motion.tr>
                     ))}
                   </tbody>

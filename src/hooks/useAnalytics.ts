@@ -7,9 +7,11 @@ import {
   getGenderDistribution,
   getWeeklyTrend,
   getBirthYearDistribution,
+  getInterestStatusDistribution,
   MonthlyDataPoint,
   AreaDataPoint,
   BirthYearDataPoint,
+  InterestDistribution,
 } from "@/services/analyticsService";
 
 interface AnalyticsData {
@@ -18,6 +20,7 @@ interface AnalyticsData {
   gender:    { name: string; value: number; color: string }[];
   weekly:    { day: string; male: number; female: number; total: number }[];
   birthYear: BirthYearDataPoint[];
+  interest:  InterestDistribution;
 }
 
 interface UseAnalyticsReturn {
@@ -36,14 +39,15 @@ export function useAnalytics(): UseAnalyticsReturn {
     setLoading(true);
     setError(null);
     try {
-      const [monthly, areas, gender, weekly, birthYear] = await Promise.all([
+      const [monthly, areas, gender, weekly, birthYear, interest] = await Promise.all([
         getMonthlyTrend(12),
         getAreaDistribution(),
         getGenderDistribution(),
         getWeeklyTrend(),
         getBirthYearDistribution(),
+        getInterestStatusDistribution(),
       ]);
-      setData({ monthly, areas, gender, weekly, birthYear });
+      setData({ monthly, areas, gender, weekly, birthYear, interest });
     } catch (err: unknown) {
       setError((err as Error).message ?? "Failed to load analytics");
     } finally {

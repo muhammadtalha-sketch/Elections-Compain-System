@@ -8,6 +8,7 @@ import {
 import {
   TrendingUp, Users, MapPin, Activity, BarChart3,
   PieChart as PieIcon, AlertCircle, RefreshCw, Calendar,
+  ThumbsUp, ThumbsDown, Clock,
 } from "lucide-react";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -118,6 +119,114 @@ export function AnalyticsDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* ── Campaign Support Status ───────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+        className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
+      >
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border bg-muted/20">
+          <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+            <ThumbsUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">Campaign Support Status</h3>
+            <p className="text-[10px] text-muted-foreground">Voter engagement overview</p>
+          </div>
+        </div>
+        <div className="p-5">
+          {analyticsLoading ? (
+            <ChartSkeleton height={140} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Stat cards */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {
+                    label: "Interested",
+                    value: data?.interest.interested ?? 0,
+                    icon: ThumbsUp,
+                    color: "text-green-600 dark:text-green-400",
+                    bg:    "bg-green-50 dark:bg-green-950/40",
+                    fill:  "#16a34a",
+                  },
+                  {
+                    label: "Not Interested",
+                    value: data?.interest.notInterested ?? 0,
+                    icon: ThumbsDown,
+                    color: "text-red-600 dark:text-red-400",
+                    bg:    "bg-red-50 dark:bg-red-950/40",
+                    fill:  "#dc2626",
+                  },
+                  {
+                    label: "Pending",
+                    value: data?.interest.pending ?? 0,
+                    icon: Clock,
+                    color: "text-amber-600 dark:text-amber-400",
+                    bg:    "bg-amber-50 dark:bg-amber-950/40",
+                    fill:  "#d97706",
+                  },
+                ].map((item) => {
+                  const pct = data?.interest.total
+                    ? Math.round((item.value / data.interest.total) * 100)
+                    : 0;
+                  return (
+                    <div key={item.label} className={`rounded-xl p-3 ${item.bg}`}>
+                      <item.icon className={`w-4 h-4 mb-2 ${item.color}`} />
+                      <p className="text-xl font-bold text-foreground">{item.value.toLocaleString()}</p>
+                      <p className={`text-[10px] font-semibold ${item.color}`}>{item.label}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{pct}%</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pie chart */}
+              {(data?.interest.total ?? 0) > 0 ? (
+                <div>
+                  <ResponsiveContainer width="100%" height={140}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "Interested",     value: data?.interest.interested    ?? 0, color: "#16a34a" },
+                          { name: "Not Interested", value: data?.interest.notInterested ?? 0, color: "#dc2626" },
+                          { name: "Pending",        value: data?.interest.pending       ?? 0, color: "#d97706" },
+                        ].filter((d) => d.value > 0)}
+                        cx="50%" cy="50%"
+                        outerRadius={60} innerRadius={30}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {[
+                          { color: "#16a34a" },
+                          { color: "#dc2626" },
+                          { color: "#d97706" },
+                        ].map((e, i) => <Cell key={i} fill={e.color} strokeWidth={0} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap justify-center gap-3 mt-1">
+                    {[
+                      { label: "Interested",     color: "#16a34a", value: data?.interest.interested    ?? 0 },
+                      { label: "Not Interested", color: "#dc2626", value: data?.interest.notInterested ?? 0 },
+                      { label: "Pending",        color: "#d97706", value: data?.interest.pending       ?? 0 },
+                    ].map((g) => (
+                      <div key={g.label} className="flex items-center gap-1.5 text-[11px]">
+                        <div className="w-2 h-2 rounded-full" style={{ background: g.color }} />
+                        <span className="text-muted-foreground">{g.label}</span>
+                        <span className="font-semibold text-foreground">{g.value.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <ChartEmpty label="No interest data yet — mark members as Interested / Not Interested" />
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       {/* ── Row 1: Monthly trend + Gender ─────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

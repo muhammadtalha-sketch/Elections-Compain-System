@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Gender, Member, MemberUpdate } from '@/types/database.types'
+import type { Gender, InterestStatus, Member, MemberUpdate } from '@/types/database.types'
 import { resolveArea } from '@/lib/area-utils'
 
 // ─── Public interface (camelCase, kept for backward compat with hooks/components) ─
@@ -19,6 +19,9 @@ export interface FirestoreMember {
   requestMemberBar: string
   registrationDate: string
   status: 'Active' | 'Pending' | 'Inactive'
+  interestStatus?: InterestStatus
+  interestUpdatedBy?: string | null
+  interestUpdatedAt?: string | null
   remarks?: string | null
   notes?: string | null
   createdAt?: unknown
@@ -37,6 +40,7 @@ export interface MemberSearchFilters {
   regFrom?: string
   regTo?: string
   requestMemberBar?: string
+  interestStatus?: string
 }
 
 // ─── Adapter ────────────────────────────────────────────────────────────────
@@ -57,6 +61,9 @@ function toMember(row: Member): FirestoreMember {
     requestMemberBar: row.request_member_bar ?? '',
     registrationDate: row.registration_date,
     status: 'Active',
+    interestStatus: row.interest_status ?? 'Pending',
+    interestUpdatedBy: row.interest_updated_by ?? null,
+    interestUpdatedAt: row.interest_updated_at ?? null,
     remarks: row.remarks,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -179,6 +186,8 @@ export async function searchMembers(filters: MemberSearchFilters): Promise<Fires
     const num = parseInt(filters.serialExact.replace(/\D/g, ''))
     if (!isNaN(num)) query = query.eq('serial_number', num)
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (filters.interestStatus) query = (query as any).eq('interest_status', filters.interestStatus)
 
   const { data, error } = await query
     .order('registration_date', { ascending: false })
@@ -256,6 +265,22 @@ export async function getDistinctAreas(): Promise<string[]> {
     if (a) set.add(a)
   })
   return [...set].sort()
+}
+
+export async function updateInterestStatus(
+  memberId: string,
+  status: InterestStatus,
+  updatedBy: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('members')
+    .update({
+      interest_status:     status,
+      interest_updated_by: updatedBy,
+      interest_updated_at: new Date().toISOString(),
+    })
+    .eq('id', memberId)
+  if (error) throw new Error(error.message)
 }
 
 export async function getDistinctBars(): Promise<string[]> {

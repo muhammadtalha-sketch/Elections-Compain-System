@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRef, useState } from "react";
+import { motion } from "framer-motion";
 import {
-  User, Shield, Bell, Activity, Sliders,
-  Camera, Check, X, Eye, EyeOff, AlertCircle,
+  Camera, Check, Eye, EyeOff, AlertCircle, Shield,
+  Sun, Moon, Monitor, LogOut, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,78 +15,46 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/auth-context";
 import { initials, ROLE_BADGE } from "@/lib/rbac";
+import { useTheme } from "next-themes";
 
-const TABS = [
-  { id: "profile",       label: "My Profile",   icon: User      },
-  { id: "security",      label: "Security",      icon: Shield    },
-  { id: "notifications", label: "Notifications", icon: Bell      },
-  { id: "activity",      label: "Activity",      icon: Activity  },
-  { id: "preferences",   label: "Preferences",   icon: Sliders   },
-] as const;
+// ─── Shared primitives ─────────────────────────────────────────────────────────
 
-type Tab = typeof TABS[number]["id"];
-
-export function ProfilePage() {
-  const searchParams = useSearchParams();
-  const defaultTab   = (searchParams.get("tab") as Tab) ?? "profile";
-  const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
-
-  const { user, profile, role, refreshProfile } = useAuth();
-
+function Card({ title, description, children }: {
+  title: string; description: string; children: React.ReactNode;
+}) {
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-5 mb-8">
-        <AvatarUpload />
-        <div>
-          <h2 className="text-xl font-bold text-foreground">{profile?.full_name ?? "User"}</h2>
-          <p className="text-sm text-muted-foreground">{user?.email}</p>
-          {role && (
-            <span className={cn("inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-md", ROLE_BADGE[role])}>
-              {role}
-            </span>
-          )}
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-border rounded-2xl p-6 shadow-sm"
+    >
+      <div className="mb-5 pb-4 border-b border-border">
+        <h3 className="text-base font-bold text-foreground">{title}</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
+      {children}
+    </motion.div>
+  );
+}
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-border overflow-x-auto">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px",
-              activeTab === tab.id
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab panels */}
-      <div>
-        {activeTab === "profile"       && <ProfileTab       key="profile" />}
-        {activeTab === "security"      && <SecurityTab      key="security" />}
-        {activeTab === "notifications" && <NotificationsTab key="notifications" />}
-        {activeTab === "activity"      && <ActivityTab      key="activity" />}
-        {activeTab === "preferences"   && <PreferencesTab   key="preferences" />}
-      </div>
-
-      {/* suppress unused */}
-      <span className="hidden">{refreshProfile.toString()}</span>
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="text-xs font-semibold mb-1.5 block text-foreground">{label}</Label>
+      {children}
     </div>
   );
 }
 
-// ─── Avatar Upload ────────────────────────────────────────────────────────────
+function Spinner() {
+  return <Loader2 className="w-4 h-4 animate-spin" />;
+}
+
+// ─── Avatar upload ─────────────────────────────────────────────────────────────
 
 function AvatarUpload() {
   const { user, profile, refreshProfile } = useAuth();
+  const userEmail = user?.email;
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -117,7 +84,7 @@ function AvatarUpload() {
       if (updateErr) throw updateErr;
 
       await refreshProfile();
-      toast.success("Avatar updated!");
+      toast.success("Profile picture updated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -127,38 +94,52 @@ function AvatarUpload() {
   };
 
   return (
-    <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
-      <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
-        {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name ?? "Avatar"} />}
-        <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-          {initials(profile?.full_name)}
-        </AvatarFallback>
-      </Avatar>
-      <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        {uploading
-          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          : <Camera className="w-5 h-5 text-white" />
-        }
+    <div className="flex items-center gap-5">
+      <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
+        <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
+          {profile?.avatar_url && (
+            <AvatarImage src={profile.avatar_url} alt={profile.full_name ?? ""} />
+          )}
+          <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
+            {initials(profile?.full_name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          {uploading
+            ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            : <Camera className="w-5 h-5 text-white" />
+          }
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
       </div>
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <div>
+        <p className="text-sm font-semibold text-foreground">{profile?.full_name ?? "—"}</p>
+        <p className="text-xs text-muted-foreground">{userEmail}</p>
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="mt-1.5 text-xs text-primary hover:underline font-medium"
+        >
+          Change photo
+        </button>
+      </div>
     </div>
   );
 }
 
-// ─── Profile Tab ─────────────────────────────────────────────────────────────
+// ─── Personal Information ──────────────────────────────────────────────────────
 
-function ProfileTab() {
-  const { user, profile, refreshProfile } = useAuth();
-  const [form,      setForm]      = useState({ name: profile?.full_name ?? "", phone: profile?.phone ?? "" });
-  const [saving,    setSaving]    = useState(false);
-  const [changed,   setChanged]   = useState(false);
+function PersonalInfoSection() {
+  const { user, profile, role, refreshProfile } = useAuth();
+  const [form,    setForm]    = useState({ name: profile?.full_name ?? "", phone: profile?.phone ?? "" });
+  const [saving,  setSaving]  = useState(false);
+  const [changed, setChanged] = useState(false);
 
-  const handleChange = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(p => ({ ...p, [key]: e.target.value }));
+  const onChange = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((p) => ({ ...p, [key]: e.target.value }));
     setChanged(true);
   };
 
-  const handleSave = async () => {
+  const save = async () => {
     if (!user) return;
     setSaving(true);
     const { error } = await supabase.from("profiles").update({
@@ -177,49 +158,58 @@ function ProfileTab() {
   };
 
   return (
-    <Card title="Personal Information" description="Update your name and contact details.">
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Full Name">
-          <Input value={form.name} onChange={handleChange("name")} placeholder="Your full name" />
-        </Field>
-        <Field label="Email Address">
-          <Input value={user?.email ?? ""} disabled className="opacity-60" />
-          <p className="text-[11px] text-muted-foreground mt-1">Email cannot be changed here.</p>
-        </Field>
-        <Field label="Phone Number">
-          <Input value={form.phone} onChange={handleChange("phone")} placeholder="0300-1234567" />
-        </Field>
-        <Field label="Account ID">
-          <Input value={(user?.id?.slice(0, 8) ?? "") + "…"} disabled className="font-mono opacity-60 text-xs" />
-        </Field>
-      </div>
-      <div className="mt-6 flex justify-end">
-        <Button onClick={handleSave} disabled={!changed || saving} className="gap-2 h-9 px-5">
-          {saving ? <Spinner /> : <Check className="w-4 h-4" />}
-          {saving ? "Saving…" : "Save Changes"}
-        </Button>
+    <Card title="Personal Information" description="Update your name, phone number and profile picture.">
+      <div className="space-y-6">
+        <AvatarUpload />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Full Name">
+            <Input value={form.name} onChange={onChange("name")} placeholder="Your full name" />
+          </Field>
+          <Field label="Email Address">
+            <Input value={user?.email ?? ""} disabled className="opacity-60" />
+            <p className="text-[11px] text-muted-foreground mt-1">Email cannot be changed here.</p>
+          </Field>
+          <Field label="Phone Number">
+            <Input value={form.phone} onChange={onChange("phone")} placeholder="0300-1234567" />
+          </Field>
+          <Field label="Role">
+            {role && (
+              <div className="flex items-center h-9 px-3">
+                <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-md", ROLE_BADGE[role])}>
+                  {role}
+                </span>
+              </div>
+            )}
+          </Field>
+        </div>
+
+        <div className="flex justify-end">
+          <Button onClick={save} disabled={!changed || saving} className="gap-2 h-9 px-5">
+            {saving ? <Spinner /> : <Check className="w-4 h-4" />}
+            {saving ? "Saving…" : "Save Changes"}
+          </Button>
+        </div>
       </div>
     </Card>
   );
 }
 
-// ─── Security Tab ─────────────────────────────────────────────────────────────
+// ─── Change Password ───────────────────────────────────────────────────────────
 
-function SecurityTab() {
-  const [form, setForm] = useState({ current: "", next: "", confirm: "" });
-  const [show, setShow] = useState({ current: false, next: false, confirm: false });
-  const [saving, setSaving]   = useState(false);
-  const [error,  setError]    = useState("");
+function SecuritySection() {
+  const [form,   setForm]   = useState({ current: "", next: "", confirm: "" });
+  const [show,   setShow]   = useState({ current: false, next: false, confirm: false });
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState("");
 
-  const toggle = (key: keyof typeof show) => () => setShow(p => ({ ...p, [key]: !p[key] }));
+  const toggle = (k: keyof typeof show) => () => setShow((p) => ({ ...p, [k]: !p[k] }));
 
-  const handleSave = async () => {
+  const save = async () => {
     if (form.next.length < 8) { setError("New password must be at least 8 characters."); return; }
     if (form.next !== form.confirm) { setError("Passwords do not match."); return; }
-
     setSaving(true);
     setError("");
-
     const { error: err } = await supabase.auth.updateUser({ password: form.next });
     if (err) {
       setError(err.message);
@@ -231,7 +221,7 @@ function SecurityTab() {
   };
 
   return (
-    <Card title="Change Password" description="Use a strong, unique password you don't use elsewhere.">
+    <Card title="Change Password" description="Use a strong, unique password.">
       <div className="space-y-4 max-w-sm">
         {error && (
           <div className="flex items-center gap-2.5 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive">
@@ -240,8 +230,12 @@ function SecurityTab() {
           </div>
         )}
 
-        {(["current", "next", "confirm"] as const).map(key => {
-          const labels = { current: "Current Password", next: "New Password", confirm: "Confirm New Password" };
+        {(["current", "next", "confirm"] as const).map((key) => {
+          const labels = {
+            current: "Current Password",
+            next:    "New Password",
+            confirm: "Confirm New Password",
+          };
           return (
             <Field key={key} label={labels[key]}>
               <div className="relative">
@@ -249,7 +243,7 @@ function SecurityTab() {
                   type={show[key] ? "text" : "password"}
                   placeholder="••••••••"
                   value={form[key]}
-                  onChange={e => { setForm(p => ({ ...p, [key]: e.target.value })); setError(""); }}
+                  onChange={(e) => { setForm((p) => ({ ...p, [key]: e.target.value })); setError(""); }}
                   className="pr-10"
                   autoComplete={key === "current" ? "current-password" : "new-password"}
                 />
@@ -261,53 +255,51 @@ function SecurityTab() {
             </Field>
           );
         })}
-      </div>
-      <div className="mt-6 flex justify-end">
-        <Button onClick={handleSave} disabled={!form.next || !form.confirm || saving} className="gap-2 h-9 px-5">
-          {saving ? <Spinner /> : <Shield className="w-4 h-4" />}
-          {saving ? "Updating…" : "Update Password"}
-        </Button>
+
+        <div className="flex justify-end pt-1">
+          <Button onClick={save} disabled={!form.next || !form.confirm || saving} className="gap-2 h-9 px-5">
+            {saving ? <Spinner /> : <Shield className="w-4 h-4" />}
+            {saving ? "Updating…" : "Update Password"}
+          </Button>
+        </div>
       </div>
     </Card>
   );
 }
 
-// ─── Notifications Tab ─────────────────────────────────────────────────────────
+// ─── Notifications ─────────────────────────────────────────────────────────────
 
-function NotificationsTab() {
-  const [prefs, setPrefs] = useState({
-    email_imports: true,
-    email_members: true,
-    email_reports: false,
-    push_all:      true,
-  });
+function NotificationsSection() {
+  const [prefs, setPrefs] = useState({ email: true, system: true });
+  const toggle = (k: keyof typeof prefs) => setPrefs((p) => ({ ...p, [k]: !p[k] }));
 
   return (
-    <Card title="Notification Preferences" description="Choose when and how you receive updates.">
+    <Card title="Notifications" description="Choose how you receive updates.">
       <div className="space-y-4">
         {([
-          { key: "email_imports", label: "Import completions",   desc: "When a bulk import finishes" },
-          { key: "email_members", label: "New member alerts",    desc: "When a new member is added" },
-          { key: "email_reports", label: "Weekly digest",        desc: "Weekly summary email every Monday" },
-          { key: "push_all",      label: "In-app notifications", desc: "Show notifications in the portal" },
-        ] as const).map(item => (
+          { key: "email",  label: "Email Notifications",  desc: "Receive important updates via email" },
+          { key: "system", label: "System Notifications", desc: "In-app alerts and activity notifications" },
+        ] as const).map((item) => (
           <label key={item.key} className="flex items-center justify-between gap-4 cursor-pointer group">
             <div>
               <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{item.label}</p>
               <p className="text-xs text-muted-foreground">{item.desc}</p>
             </div>
-            <div
-              onClick={() => setPrefs(p => ({ ...p, [item.key]: !p[item.key] }))}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={prefs[item.key]}
+              onClick={() => toggle(item.key)}
               className={cn(
-                "relative w-10 h-5.5 rounded-full transition-colors flex-shrink-0",
-                prefs[item.key] ? "bg-primary" : "bg-muted"
+                "relative w-10 h-5 rounded-full transition-colors flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                prefs[item.key] ? "bg-primary" : "bg-muted-foreground/30"
               )}
             >
-              <div className={cn(
+              <span className={cn(
                 "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform",
                 prefs[item.key] ? "translate-x-5" : "translate-x-0.5"
               )} />
-            </div>
+            </button>
           </label>
         ))}
       </div>
@@ -315,111 +307,114 @@ function NotificationsTab() {
   );
 }
 
-// ─── Activity Tab ──────────────────────────────────────────────────────────────
+// ─── Theme Settings ────────────────────────────────────────────────────────────
 
-function ActivityTab() {
-  const { user } = useAuth();
-  const [activities, setActivities] = useState<Array<{ id: string; action: string; created_at: string }>>([]);
-  const [loading, setLoading] = useState(true);
+function ThemeSection() {
+  const { theme, setTheme } = useTheme();
 
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("activity_logs")
-      .select("id, action, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(20)
-      .then(({ data }) => {
-        setActivities((data ?? []) as typeof activities);
-        setLoading(false);
-      });
-  }, [user]);
+  const options = [
+    { value: "light",  label: "Light",          icon: Sun     },
+    { value: "dark",   label: "Dark",           icon: Moon    },
+    { value: "system", label: "System Default", icon: Monitor },
+  ] as const;
 
   return (
-    <Card title="Recent Activity" description="Your last 20 actions in the system.">
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
-      ) : activities.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No activity recorded yet.</p>
+    <Card title="Theme Settings" description="Choose your preferred appearance.">
+      <div className="grid grid-cols-3 gap-3">
+        {options.map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            onClick={() => setTheme(value)}
+            className={cn(
+              "flex flex-col items-center gap-2.5 p-4 rounded-xl border-2 transition-all",
+              theme === value
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border hover:border-primary/40 hover:bg-muted/50"
+            )}
+          >
+            <div className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center",
+              theme === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            )}>
+              <Icon className="w-5 h-5" />
+            </div>
+            <span className={cn(
+              "text-xs font-semibold",
+              theme === value ? "text-primary" : "text-muted-foreground"
+            )}>
+              {label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Logout ────────────────────────────────────────────────────────────────────
+
+function LogoutSection() {
+  const { signOut } = useAuth();
+  const [confirm, setConfirm] = useState(false);
+  const [busy,    setBusy]    = useState(false);
+
+  const doLogout = async () => {
+    setBusy(true);
+    await signOut();
+  };
+
+  return (
+    <Card title="Logout" description="Sign out of your account on this device.">
+      {!confirm ? (
+        <Button
+          variant="destructive"
+          className="gap-2"
+          onClick={() => setConfirm(true)}
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </Button>
       ) : (
         <div className="space-y-3">
-          {activities.map(a => (
-            <div key={a.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Activity className="w-3.5 h-3.5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-foreground font-medium capitalize">{a.action.replace(/_/g, " ")}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {new Date(a.created_at).toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" })}
-                </p>
-              </div>
-            </div>
-          ))}
+          <p className="text-sm text-foreground font-medium">Are you sure you want to logout?</p>
+          <div className="flex gap-3">
+            <Button variant="destructive" className="gap-2" onClick={doLogout} disabled={busy}>
+              {busy ? <Spinner /> : <LogOut className="w-4 h-4" />}
+              {busy ? "Signing out…" : "Yes, Logout"}
+            </Button>
+            <Button variant="outline" onClick={() => setConfirm(false)} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
     </Card>
   );
 }
 
-// ─── Preferences Tab ──────────────────────────────────────────────────────────
+// ─── Page ──────────────────────────────────────────────────────────────────────
 
-function PreferencesTab() {
-  const [lang, setLang] = useState("en");
+export function ProfilePage() {
+  const { user, profile, role } = useAuth();
 
   return (
-    <Card title="Preferences" description="Customise your portal experience.">
-      <Field label="Language">
-        <select
-          value={lang}
-          onChange={e => setLang(e.target.value)}
-          className="w-full h-9 px-3 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          <option value="en">English</option>
-          <option value="ur">اردو (Urdu)</option>
-        </select>
-      </Field>
-      <p className="mt-4 text-xs text-muted-foreground">
-        Theme is controlled by the sun/moon toggle in the top navigation bar.
-      </p>
-    </Card>
-  );
-}
-
-// ─── Shared primitives ────────────────────────────────────────────────────────
-
-function Card({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border rounded-2xl p-6 shadow-sm"
-    >
-      <div className="mb-5">
-        <h3 className="text-base font-bold text-foreground">{title}</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+    <div className="max-w-2xl mx-auto space-y-5">
+      {/* Page header */}
+      <div>
+        <h1 className="text-xl font-bold text-foreground">Profile & Settings</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{user?.email}</p>
+        {role && (
+          <span className={cn("inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-md", ROLE_BADGE[role])}>
+            {role}
+          </span>
+        )}
       </div>
-      {children}
-    </motion.div>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <Label className="text-xs font-semibold mb-1.5 block">{label}</Label>
-      {children}
+      <PersonalInfoSection key={profile?.updated_at} />
+      <SecuritySection />
+      <NotificationsSection />
+      <ThemeSection />
+      <LogoutSection />
     </div>
   );
 }
-
-function Spinner() {
-  return <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />;
-}
-
-// Suppress unused X import
-const _X = X;
-void _X;

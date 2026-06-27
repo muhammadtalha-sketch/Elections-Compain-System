@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ChevronUp, ChevronDown, ChevronsUpDown,
   Download, FileText, Search, Filter,
   Eye, Edit, Trash2, MoreHorizontal, ChevronLeft, ChevronRight,
-  Loader2, AlertCircle, RefreshCw, Users,
+  Loader2, AlertCircle, RefreshCw, Users, ThumbsUp, ThumbsDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,31 +23,42 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useMembers } from "@/hooks/useMembers";
-import { FirestoreMember } from "@/services/memberService";
+import { FirestoreMember, updateInterestStatus } from "@/services/memberService";
+import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
+import type { InterestStatus } from "@/types/database.types";
+
+const INTEREST_BADGE: Record<InterestStatus, string> = {
+  "Interested":     "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+  "Not Interested": "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  "Pending":        "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+};
 
 type SortKey = keyof FirestoreMember;
 type SortDir = "asc" | "desc" | null;
 
 const ALL_COLUMNS = [
-  { key: "serialNumber", label: "Serial #", visible: true },
-  { key: "name", label: "Name", visible: true },
-  { key: "fatherName", label: "Father Name", visible: true },
-  { key: "gender", label: "Gender", visible: true },
-  { key: "dob", label: "DOB", visible: true },
-  { key: "birthYear", label: "Birth Year", visible: false },
-  { key: "address", label: "Address", visible: false },
-  { key: "area", label: "Area", visible: true },
-  { key: "phoneNumber", label: "Phone", visible: true },
-  { key: "requestMemberBar", label: "Member Bar", visible: true },
-  { key: "registrationDate", label: "Reg. Date", visible: true },
-  { key: "status", label: "Status", visible: true },
+  { key: "serialNumber",    label: "Serial #",       visible: true  },
+  { key: "name",            label: "Name",           visible: true  },
+  { key: "fatherName",      label: "Father Name",    visible: true  },
+  { key: "gender",          label: "Gender",         visible: true  },
+  { key: "dob",             label: "DOB",            visible: true  },
+  { key: "birthYear",       label: "Birth Year",     visible: false },
+  { key: "address",         label: "Address",        visible: false },
+  { key: "area",            label: "Area",           visible: true  },
+  { key: "phoneNumber",     label: "Phone",          visible: true  },
+  { key: "requestMemberBar",label: "Member Bar",     visible: true  },
+  { key: "registrationDate",label: "Reg. Date",      visible: true  },
+  { key: "interestStatus",  label: "Interest",       visible: true  },
+  { key: "status",          label: "Status",         visible: false },
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export function MembersTable() {
   const { members, loading, error, refetch, remove } = useMembers();
+  const { user } = useAuth();
+  const router = useRouter();
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("registrationDate");
@@ -56,9 +68,24 @@ export function MembersTable() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [genderFilter, setGenderFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [interestFilter, setInterestFilter] = useState<string>("all");
+  const [localInterest, setLocalInterest] = useState<Record<string, InterestStatus>>({});
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
     Object.fromEntries(ALL_COLUMNS.map((c) => [c.key, c.visible]))
   );
+
+  const handleInterestClick = async (memberId: string, status: InterestStatus) => {
+    if (!user) return;
+    const prev = localInterest[memberId];
+    setLocalInterest((p) => ({ ...p, [memberId]: status }));
+    try {
+      await updateInterestStatus(memberId, status, user.id);
+      toast.success(`Marked as ${status}`);
+    } catch {
+      setLocalInterest((p) => ({ ...p, [memberId]: prev }));
+      toast.error("Failed to update interest status");
+    }
+  };
 
   const filtered = useMemo(() => {
     let data = [...members];
@@ -75,8 +102,12 @@ export function MembersTable() {
       );
     }
 
-    if (genderFilter !== "all") data = data.filter((m) => m.gender === genderFilter);
-    if (statusFilter !== "all") data = data.filter((m) => m.status === statusFilter);
+    if (genderFilter !== "all")   data = data.filter((m) => m.gender === genderFilter);
+    if (statusFilter !== "all")   data = data.filter((m) => m.status === statusFilter);
+    if (interestFilter !== "all") data = data.filter((m) => {
+      const effective = localInterest[m.id ?? ""] ?? m.interestStatus;
+      return effective === interestFilter;
+    });
 
     if (sortKey && sortDir) {
       data.sort((a, b) => {
@@ -207,6 +238,16 @@ export function MembersTable() {
             <SelectItem value="Active">Active</SelectItem>
             <SelectItem value="Pending">Pending</SelectItem>
             <SelectItem value="Inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={interestFilter} onValueChange={(v) => { if (v) { setInterestFilter(v); setPage(1); } }}>
+          <SelectTrigger className="w-36 h-8 text-xs"><SelectValue placeholder="Interest" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Interest</SelectItem>
+            <SelectItem value="Interested">Interested</SelectItem>
+            <SelectItem value="Not Interested">Not Interested</SelectItem>
+            <SelectItem value="Pending">Pending</SelectItem>
           </SelectContent>
         </Select>
 
@@ -391,6 +432,32 @@ export function MembersTable() {
                   {visibleColumns.registrationDate && (
                     <td className="px-3 py-2.5 font-mono text-muted-foreground whitespace-nowrap">{member.registrationDate}</td>
                   )}
+                  {visibleColumns.interestStatus && (
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-md font-semibold whitespace-nowrap",
+                          INTEREST_BADGE[localInterest[member.id ?? ""] ?? member.interestStatus ?? "Pending"]
+                        )}>
+                          {localInterest[member.id ?? ""] ?? member.interestStatus ?? "Pending"}
+                        </span>
+                        <button
+                          title="Mark Interested"
+                          onClick={() => handleInterestClick(member.id ?? "", "Interested")}
+                          className="w-5 h-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors"
+                        >
+                          <ThumbsUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          title="Mark Not Interested"
+                          onClick={() => handleInterestClick(member.id ?? "", "Not Interested")}
+                          className="w-5 h-5 rounded flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        >
+                          <ThumbsDown className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                   {visibleColumns.status && (
                     <td className="px-3 py-2.5">
                       <Badge variant="outline" className={cn(
@@ -410,8 +477,8 @@ export function MembersTable() {
                         <MoreHorizontal className="w-3.5 h-3.5" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-36">
-                        <DropdownMenuItem className="text-xs gap-2 cursor-pointer">
-                          <Eye className="w-3 h-3" /> View
+                        <DropdownMenuItem className="text-xs gap-2 cursor-pointer" onClick={() => router.push(`/dashboard/members/${member.id}`)}>
+                            <Eye className="w-3 h-3" /> View
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-xs gap-2 cursor-pointer">
                           <Edit className="w-3 h-3" /> Edit

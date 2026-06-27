@@ -6,9 +6,10 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'Super Admin' | 'Admin' | 'User'
-export type Gender   = 'Male' | 'Female' | 'Other'
-export type ImportStatus   = 'Processing' | 'Completed' | 'Failed'
+export type UserRole      = 'Super Admin' | 'Admin' | 'User'
+export type Gender        = 'Male' | 'Female' | 'Other'
+export type ImportStatus  = 'Processing' | 'Completed' | 'Failed'
+export type InterestStatus = 'Interested' | 'Not Interested' | 'Pending'
 export type ActivityAction =
   | 'LOGIN'
   | 'LOGOUT'
@@ -17,6 +18,10 @@ export type ActivityAction =
   | 'DELETE_MEMBER'
   | 'IMPORT_EXCEL'
   | 'EXPORT_DATA'
+  | 'COMMENT_ADDED'
+  | 'COMMENT_UPDATED'
+  | 'COMMENT_DELETED'
+  | 'INTEREST_UPDATED'
 
 export interface Database {
   public: {
@@ -58,61 +63,94 @@ export interface Database {
 
       members: {
         Row: {
-          id:                  string
-          serial_number:       number
-          name:                string
-          father_name:         string | null
-          gender:              Gender | null
-          dob:                 string | null
-          birth_year:          number | null
-          address:             string | null
-          area:                string | null
-          city:                string
-          phone_number:        string | null
-          request_member_bar:  string | null
-          registration_date:   string
-          remarks:             string | null
-          created_by:          string | null
-          updated_by:          string | null
-          created_at:          string
-          updated_at:          string
-          search_vector:       string | null
+          id:                    string
+          serial_number:         number
+          name:                  string
+          father_name:           string | null
+          gender:                Gender | null
+          dob:                   string | null
+          birth_year:            number | null
+          address:               string | null
+          area:                  string | null
+          city:                  string
+          phone_number:          string | null
+          request_member_bar:    string | null
+          registration_date:     string
+          remarks:               string | null
+          created_by:            string | null
+          updated_by:            string | null
+          created_at:            string
+          updated_at:            string
+          search_vector:         string | null
+          interest_status:       InterestStatus
+          interest_updated_by:   string | null
+          interest_updated_at:   string | null
         }
         Insert: {
-          id?:                  string
-          serial_number:        number
-          name:                 string
-          father_name?:         string | null
-          gender?:              Gender | null
-          dob?:                 string | null
-          birth_year?:          number | null
-          address?:             string | null
-          area?:                string | null
-          city?:                string
-          phone_number?:        string | null
-          request_member_bar?:  string | null
-          registration_date?:   string
-          remarks?:             string | null
-          created_by?:          string | null
-          updated_by?:          string | null
-          created_at?:          string
-          updated_at?:          string
+          id?:                    string
+          serial_number:          number
+          name:                   string
+          father_name?:           string | null
+          gender?:                Gender | null
+          dob?:                   string | null
+          birth_year?:            number | null
+          address?:               string | null
+          area?:                  string | null
+          city?:                  string
+          phone_number?:          string | null
+          request_member_bar?:    string | null
+          registration_date?:     string
+          remarks?:               string | null
+          created_by?:            string | null
+          updated_by?:            string | null
+          created_at?:            string
+          updated_at?:            string
+          interest_status?:       InterestStatus
+          interest_updated_by?:   string | null
+          interest_updated_at?:   string | null
         }
         Update: {
-          name?:                string
-          father_name?:         string | null
-          gender?:              Gender | null
-          dob?:                 string | null
-          birth_year?:          number | null
-          address?:             string | null
-          area?:                string | null
-          city?:                string
-          phone_number?:        string | null
-          request_member_bar?:  string | null
-          registration_date?:   string
-          remarks?:             string | null
-          updated_by?:          string | null
-          updated_at?:          string
+          name?:                  string
+          father_name?:           string | null
+          gender?:                Gender | null
+          dob?:                   string | null
+          birth_year?:            number | null
+          address?:               string | null
+          area?:                  string | null
+          city?:                  string
+          phone_number?:          string | null
+          request_member_bar?:    string | null
+          registration_date?:     string
+          remarks?:               string | null
+          updated_by?:            string | null
+          updated_at?:            string
+          interest_status?:       InterestStatus
+          interest_updated_by?:   string | null
+          interest_updated_at?:   string | null
+        }
+        Relationships: []
+      }
+
+      member_comments: {
+        Row: {
+          id:         string
+          member_id:  string
+          user_id:    string
+          comment:    string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?:         string
+          member_id:   string
+          user_id:     string
+          comment:     string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          comment?:    string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -283,12 +321,13 @@ export interface Database {
 }
 
 // Convenience row types
-export type Profile        = Database['public']['Tables']['profiles']['Row']
-export type Member         = Database['public']['Tables']['members']['Row']
-export type ActivityLog    = Database['public']['Tables']['activity_logs']['Row']
-export type ImportHistory  = Database['public']['Tables']['import_history']['Row']
-export type SavedSearch    = Database['public']['Tables']['saved_searches']['Row']
-export type DashboardStat  = Database['public']['Tables']['dashboard_stats_cache']['Row']
+export type Profile         = Database['public']['Tables']['profiles']['Row']
+export type Member          = Database['public']['Tables']['members']['Row']
+export type MemberComment   = Database['public']['Tables']['member_comments']['Row']
+export type ActivityLog     = Database['public']['Tables']['activity_logs']['Row']
+export type ImportHistory   = Database['public']['Tables']['import_history']['Row']
+export type SavedSearch     = Database['public']['Tables']['saved_searches']['Row']
+export type DashboardStat   = Database['public']['Tables']['dashboard_stats_cache']['Row']
 
 export type MemberStatistics = Database['public']['Views']['member_statistics_view']['Row']
 export type AreaStatistics   = Database['public']['Views']['area_statistics_view']['Row']

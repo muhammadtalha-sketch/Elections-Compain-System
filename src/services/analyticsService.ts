@@ -211,6 +211,33 @@ export async function getBirthYearDistribution(): Promise<BirthYearDataPoint[]> 
     .map(([decade, count]) => ({ range: `${decade}s`, count }))
 }
 
+// ─── Interest status distribution ────────────────────────────────────────────
+
+export interface InterestDistribution {
+  interested:    number
+  notInterested: number
+  pending:       number
+  total:         number
+}
+
+export async function getInterestStatusDistribution(): Promise<InterestDistribution> {
+  const { data, error } = await supabase
+    .from('members')
+    .select('interest_status')
+
+  if (error) throw new Error(error.message)
+
+  const counts = { interested: 0, notInterested: 0, pending: 0 }
+  ;(data ?? []).forEach((row) => {
+    const s = (row as { interest_status?: string }).interest_status ?? 'Pending'
+    if (s === 'Interested')    counts.interested++
+    else if (s === 'Not Interested') counts.notInterested++
+    else counts.pending++
+  })
+
+  return { ...counts, total: (data ?? []).length }
+}
+
 // ─── Weekly trend ────────────────────────────────────────────────────────────
 
 export async function getWeeklyTrend(): Promise<{ day: string; male: number; female: number; total: number }[]> {
