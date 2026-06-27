@@ -12,19 +12,20 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/auth-context";
-import { can, initials, ROLE_BADGE } from "@/lib/rbac";
-import type { Permission } from "@/lib/rbac";
+import { initials, ROLE_BADGE } from "@/lib/rbac";
 
+// All nav items are shown to every authenticated user.
+// Permission enforcement happens inside each page, not here.
 const NAV_ITEMS = [
-  { label: "Dashboard",     href: "/dashboard",              icon: LayoutDashboard, permission: "viewDashboard"    as Permission },
-  { label: "Members",       href: "/dashboard/members",      icon: Users,           permission: "viewMembers"      as Permission },
-  { label: "Search Records",href: "/dashboard/search",       icon: Search,          permission: "viewMembers"      as Permission },
-  { label: "Add Member",    href: "/dashboard/add-member",   icon: UserPlus,        permission: "addMembers"       as Permission },
-  { label: "Import Data",   href: "/dashboard/import",       icon: Upload,          permission: "importData"       as Permission },
-  { label: "Analytics",     href: "/dashboard/analytics",    icon: BarChart3,       permission: "viewAnalytics"    as Permission },
-  { label: "Users",         href: "/dashboard/users",        icon: UserCog,         permission: "viewUsers"        as Permission },
-  { label: "Activity Logs", href: "/dashboard/activity-logs",icon: ClipboardList,   permission: "viewActivityLogs" as Permission },
-  { label: "Settings",      href: "/dashboard/settings",     icon: Settings,        permission: "manageSettings"   as Permission },
+  { label: "Dashboard",      href: "/dashboard",               icon: LayoutDashboard },
+  { label: "Members",        href: "/dashboard/members",       icon: Users           },
+  { label: "Search Records", href: "/dashboard/search",        icon: Search          },
+  { label: "Add Member",     href: "/dashboard/add-member",    icon: UserPlus        },
+  { label: "Import Data",    href: "/dashboard/import",        icon: Upload          },
+  { label: "Analytics",      href: "/dashboard/analytics",     icon: BarChart3       },
+  { label: "Users",          href: "/dashboard/users",         icon: UserCog         },
+  { label: "Activity Logs",  href: "/dashboard/activity-logs", icon: ClipboardList   },
+  { label: "Settings",       href: "/dashboard/settings",      icon: Settings        },
 ];
 
 interface SidebarProps {
@@ -38,7 +39,6 @@ export function Sidebar({ isMobileOpen, onMobileClose }: SidebarProps) {
   const { profile, role } = useAuth();
 
   const displayName = profile?.full_name ?? "User";
-  const visibleItems = NAV_ITEMS.filter(item => can(role, item.permission));
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -72,10 +72,10 @@ export function Sidebar({ isMobileOpen, onMobileClose }: SidebarProps) {
         </button>
       </div>
 
-      {/* Nav items */}
+      {/* Nav items — always all items, no role filtering */}
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-0.5 px-2">
-          {visibleItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link

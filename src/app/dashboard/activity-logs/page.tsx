@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic'
 
 import { ActivityTimeline } from "@/components/activity-logs/activity-timeline";
-
-// FUTURE BACKEND INTEGRATION
-// TODO: GET /api/logs — paginated activity logs from MongoDB
-// TODO: JWT Authorization required
-// TODO: Real-time updates via WebSocket or Server-Sent Events
+import { PermissionGate } from "@/components/auth/permission-gate";
 
 export default function ActivityLogsPage() {
-  return <ActivityTimeline />;
+  return (
+    <PermissionGate permission="viewActivityLogs" description="Only Admins can view activity logs.">
+      <ActivityTimeline />
+    </PermissionGate>
+  );
 }

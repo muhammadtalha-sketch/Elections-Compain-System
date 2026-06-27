@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
+import { isSuperAdmin } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 
 export default function SignupPage() {
@@ -58,14 +59,15 @@ export default function SignupPage() {
       return;
     }
 
-    // Create profile immediately (Viewer role by default)
+    // Assign role: Super Admin for the owner email, User for everyone else
     if (data.user) {
+      const role = isSuperAdmin(form.email) ? 'Super Admin' : 'User';
       await supabase.from('profiles').upsert({
         id:        data.user.id,
         full_name: form.name.trim(),
         email:     form.email.toLowerCase(),
         phone:     form.phone.trim() || null,
-        role:      'Viewer',
+        role,
         is_active: true,
       }, { onConflict: 'id' });
     }

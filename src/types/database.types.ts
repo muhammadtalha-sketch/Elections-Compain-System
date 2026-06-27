@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'Admin' | 'Manager' | 'Data Entry Operator' | 'Viewer'
+export type UserRole = 'Super Admin' | 'Admin' | 'User'
 export type Gender   = 'Male' | 'Female' | 'Other'
 export type ImportStatus   = 'Processing' | 'Completed' | 'Failed'
 export type ActivityAction =

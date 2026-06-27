@@ -33,11 +33,10 @@ const TYPE_CONFIG = {
 };
 
 const ROLE_CONFIG: Record<string, { color: string; bg: string }> = {
-  Admin:                { color: "text-red-700 dark:text-red-400",    bg: "bg-red-50 dark:bg-red-950/40" },
-  Manager:              { color: "text-violet-700 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40" },
-  "Data Entry Operator":{ color: "text-blue-700 dark:text-blue-400",  bg: "bg-blue-50 dark:bg-blue-950/40" },
-  Viewer:               { color: "text-slate-700 dark:text-slate-400", bg: "bg-slate-100 dark:bg-slate-800/60" },
-  System:               { color: "text-slate-500 dark:text-slate-400", bg: "bg-slate-100 dark:bg-slate-800/60" },
+  "Super Admin": { color: "text-amber-700 dark:text-amber-400",  bg: "bg-amber-50 dark:bg-amber-950/40" },
+  Admin:         { color: "text-red-700 dark:text-red-400",      bg: "bg-red-50 dark:bg-red-950/40" },
+  User:          { color: "text-slate-700 dark:text-slate-400",  bg: "bg-slate-100 dark:bg-slate-800/60" },
+  System:        { color: "text-slate-500 dark:text-slate-400",  bg: "bg-slate-100 dark:bg-slate-800/60" },
 };
 
 function formatTime(ts: string) {

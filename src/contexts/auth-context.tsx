@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { SUPER_ADMIN_EMAIL, isSuperAdmin } from '@/lib/rbac'
 import type { Profile, UserRole } from '@/types/database.types'
 
 interface AuthContextType {
@@ -21,10 +22,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const loadProfile = useCallback(async (userId: string) => {
+  const loadProfile = useCallback(async (authUser: User) => {
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-      setProfile(data)
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single()
+
+      let prof = data as Profile | null
+
+      // Ensure Super Admin email always has the Super Admin role
+      if (isSuperAdmin(authUser.email)) {
+        if (!prof || prof.role !== 'Super Admin') {
+          const upsertData = {
+            id:        authUser.id,
+            email:     SUPER_ADMIN_EMAIL,
+            full_name: prof?.full_name ?? 'Super Admin',
+            role:      'Super Admin' as UserRole,
+            is_active: true,
+          }
+          const { data: updated } = await supabase
+            .from('profiles')
+            .upsert(upsertData, { onConflict: 'id' })
+            .select()
+            .single()
+          prof = (updated ?? { ...upsertData, phone: null, avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }) as Profile
+        }
+      }
+
+      // Ignore "no rows" error (first sign-in before profile is created)
+      if (error && error.code !== 'PGRST116') {
+        setProfile(null)
+      } else {
+        setProfile(prof)
+      }
     } catch {
       setProfile(null)
     }
@@ -37,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return
       setUser(session?.user ?? null)
       if (session?.user) {
-        loadProfile(session.user.id).finally(() => { if (mounted) setLoading(false) })
+        loadProfile(session.user).finally(() => { if (mounted) setLoading(false) })
       } else {
         setLoading(false)
       }
@@ -47,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return
       setUser(session?.user ?? null)
       if (session?.user) {
-        loadProfile(session.user.id)
+        loadProfile(session.user)
       } else {
         setProfile(null)
         setLoading(false)
@@ -65,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const refreshProfile = useCallback(async () => {
-    if (user) await loadProfile(user.id)
+    if (user) await loadProfile(user)
   }, [user, loadProfile])
 
   return (

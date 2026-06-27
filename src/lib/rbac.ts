@@ -1,33 +1,56 @@
 import type { UserRole } from '@/types/database.types'
 
-const PERMISSIONS = {
-  viewDashboard:    ['Admin', 'Manager', 'Data Entry Operator', 'Viewer'],
-  viewMembers:      ['Admin', 'Manager', 'Data Entry Operator', 'Viewer'],
-  addMembers:       ['Admin', 'Manager', 'Data Entry Operator'],
-  editMembers:      ['Admin', 'Manager', 'Data Entry Operator'],
-  deleteMembers:    ['Admin', 'Manager'],
-  importData:       ['Admin', 'Manager', 'Data Entry Operator'],
-  exportData:       ['Admin', 'Manager', 'Viewer'],
-  viewAnalytics:    ['Admin', 'Manager', 'Viewer'],
-  viewUsers:        ['Admin', 'Manager'],
-  manageUsers:      ['Admin'],
-  viewActivityLogs: ['Admin', 'Manager'],
-  manageSettings:   ['Admin'],
-} as const satisfies Record<string, UserRole[]>
+// The one immutable Super Admin account. This email can never be deactivated,
+// demoted, or deleted. On signup/login it is automatically assigned Super Admin.
+export const SUPER_ADMIN_EMAIL = 'muhammad.talha@ingeniousc.com'
+
+export function isSuperAdmin(email: string | null | undefined): boolean {
+  return email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()
+}
+
+// ─── Permissions ──────────────────────────────────────────────────────────────
+// Enforcement happens INSIDE pages, not in the sidebar.
+// The sidebar always renders all items for every authenticated user.
+
+const PERMISSIONS: Record<string, UserRole[]> = {
+  // Members
+  viewMembers:      ['Super Admin', 'Admin', 'User'],
+  addMembers:       ['Super Admin', 'Admin'],
+  editMembers:      ['Super Admin', 'Admin'],
+  deleteMembers:    ['Super Admin', 'Admin'],
+
+  // Data
+  importData:       ['Super Admin', 'Admin'],
+  exportData:       ['Super Admin', 'Admin', 'User'],
+
+  // Analytics
+  viewAnalytics:    ['Super Admin', 'Admin', 'User'],
+
+  // Users
+  viewUsers:        ['Super Admin', 'Admin'],
+  manageUsers:      ['Super Admin', 'Admin'],
+
+  // Logs & settings
+  viewActivityLogs: ['Super Admin', 'Admin'],
+  manageSettings:   ['Super Admin'],
+}
 
 export type Permission = keyof typeof PERMISSIONS
 
 export function can(role: UserRole | null | undefined, permission: Permission): boolean {
   if (!role) return false
-  return (PERMISSIONS[permission] as readonly string[]).includes(role)
+  return PERMISSIONS[permission]?.includes(role) ?? false
 }
 
+// ─── Visual helpers ───────────────────────────────────────────────────────────
+
 export const ROLE_BADGE: Record<UserRole, string> = {
-  Admin:                 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
-  Manager:               'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400',
-  'Data Entry Operator': 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
-  Viewer:                'bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-400',
+  'Super Admin': 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+  'Admin':       'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+  'User':        'bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-400',
 }
+
+export const ASSIGNABLE_ROLES: UserRole[] = ['Admin', 'User']
 
 export function initials(name: string | null | undefined): string {
   if (!name) return '?'

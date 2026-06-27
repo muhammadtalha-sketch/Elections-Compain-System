@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic'
 
 import { AddMemberForm } from "@/components/add-member/add-member-form";
-
-// FUTURE BACKEND INTEGRATION
-// TODO: POST /api/members — MongoDB API Connection
-// TODO: JWT Authorization header required
-// TODO: Validate on server side, return created member with ID
+import { PermissionGate } from "@/components/auth/permission-gate";
 
 export default function AddMemberPage() {
-  return <AddMemberForm />;
+  return (
+    <PermissionGate permission="addMembers" description="Only Admins can add members.">
+      <AddMemberForm />
+    </PermissionGate>
+  );
 }
