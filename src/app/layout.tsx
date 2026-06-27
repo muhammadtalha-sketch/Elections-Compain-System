@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -36,6 +37,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <AuthProvider>
           <TooltipProvider delay={200}>
             {children}
             <Toaster
@@ -50,6 +52,7 @@ export default function RootLayout({
               }}
             />
           </TooltipProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

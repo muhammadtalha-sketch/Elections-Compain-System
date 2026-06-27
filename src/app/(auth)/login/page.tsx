@@ -1,40 +1,55 @@
-// TODO: Backend Integration
-// TODO: JWT Authentication
-// TODO: Login API — POST /api/auth/login
-// TODO: Redirect to dashboard after successful JWT token received
-// TODO: Store JWT in httpOnly cookie (not localStorage)
-
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Vote, LogIn, Shield } from "lucide-react";
+import { Eye, EyeOff, Vote, LogIn, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
+  const router      = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath    = searchParams.get("next") ?? "/dashboard";
+
+  const [email,        setEmail]        = useState("");
+  const [password,     setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe,   setRememberMe]   = useState(true);
+  const [isLoading,    setIsLoading]    = useState(false);
+  const [error,        setError]        = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) { setError("Please enter your email and password."); return; }
+
     setIsLoading(true);
-    // TODO: Backend Integration
-    // const res = await fetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
-    // const { token } = await res.json()
-    // Set cookie and redirect
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsLoading(false);
-    window.location.href = "/dashboard";
+    setError("");
+
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+      setError(
+        authError.message.includes("Invalid login")
+          ? "Incorrect email or password. Please try again."
+          : authError.message
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    toast.success("Welcome back!");
+    router.push(nextPath);
+    router.refresh();
   };
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Left panel - decorative */}
+      {/* Left decorative panel */}
       <div className="hidden lg:flex w-1/2 gradient-primary flex-col justify-between p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-10 w-72 h-72 rounded-full bg-white blur-3xl" />
@@ -52,34 +67,21 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 space-y-6">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
             <h2 className="text-white text-3xl font-bold leading-tight">
-              Manage your campaign <br /> with precision & ease.
+              Manage your campaign<br />with precision & ease.
             </h2>
             <p className="text-white/70 text-sm mt-3 leading-relaxed">
-              Track members, analyze trends, and manage your election campaign data efficiently with our enterprise-grade platform.
+              Track members, analyse trends, and manage your election campaign data efficiently with our enterprise-grade platform.
             </p>
           </motion.div>
 
           <div className="grid grid-cols-3 gap-4">
-            {[
-              { value: "1,027+", label: "Members" },
-              { value: "15", label: "Areas" },
-              { value: "7", label: "Team Users" },
-            ].map((stat) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/20"
-              >
-                <p className="text-white text-xl font-bold">{stat.value}</p>
-                <p className="text-white/60 text-xs mt-0.5">{stat.label}</p>
+            {[{ value: "1,027+", label: "Members" }, { value: "15", label: "Areas" }, { value: "7", label: "Users" }].map((s) => (
+              <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/20">
+                <p className="text-white text-xl font-bold">{s.value}</p>
+                <p className="text-white/60 text-xs mt-0.5">{s.label}</p>
               </motion.div>
             ))}
           </div>
@@ -90,7 +92,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right panel - login form */}
+      {/* Right login form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -112,23 +114,35 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2.5 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <p className="text-xs font-medium">{error}</p>
+              </motion.div>
+            )}
+
             <div>
               <Label className="text-xs font-semibold mb-1.5 block">Email Address</Label>
               <Input
                 type="email"
-                placeholder="arif.mehmood@ecs.pk"
+                placeholder="name@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setError(""); }}
                 className="h-10 text-sm"
                 required
                 autoComplete="email"
+                autoFocus
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <Label className="text-xs font-semibold">Password</Label>
-                <Link href="#" className="text-xs text-primary hover:underline">
+                <Link href="/forgot-password" className="text-xs text-primary hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -137,7 +151,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
                   className="h-10 text-sm pr-10"
                   required
                   autoComplete="current-password"
@@ -152,6 +166,17 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="remember"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-3.5 h-3.5 accent-primary cursor-pointer"
+              />
+              <Label htmlFor="remember" className="text-xs font-normal cursor-pointer">Remember me</Label>
+            </div>
+
             <Button
               type="submit"
               disabled={isLoading}
@@ -164,7 +189,7 @@ export default function LoginPage() {
                     transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
                     className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                   />
-                  Signing in...
+                  Signing in…
                 </>
               ) : (
                 <>
@@ -175,22 +200,12 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link href="/signup" className="text-primary font-semibold hover:underline">
-                Create account
-              </Link>
-            </p>
-          </div>
-
-          <div className="mt-6 flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
-            <Shield className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <p className="text-[10px] text-muted-foreground">
-              {/* TODO: JWT Authentication */}
-              Demo mode: Authentication is disabled. Click Sign In to access dashboard.
-            </p>
-          </div>
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="text-primary font-semibold hover:underline">
+              Create account
+            </Link>
+          </p>
         </motion.div>
       </div>
     </div>

@@ -6,13 +6,9 @@
  */
 
 import * as XLSX from "xlsx";
-import { createBrowserClient } from "@supabase/ssr";
+import { supabase } from "@/lib/supabase";
 import { resolveArea } from "@/lib/area-utils";
-
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import type { MemberInsert, Gender } from "@/types/database.types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -379,7 +375,7 @@ function buildDbRow(
   row:         ValidatedRow,
   mapping:     Record<string, DbField>,
   serialNum:   number
-): Record<string, unknown> {
+): MemberInsert {
   const get = (f: DbField) => getMapped(row.raw, mapping, f);
 
   const dobRaw     = get("dob");
@@ -405,7 +401,7 @@ function buildDbRow(
     serial_number:      serialNum,
     name:               (get("name") || "Unknown").trim(),
     father_name:        get("father_name").trim() || null,
-    gender:             gender as "Male" | "Female" | "Other" | null,
+    gender:             gender as Gender | null,
     dob:                dobDate,
     birth_year:         birthYear,
     address,

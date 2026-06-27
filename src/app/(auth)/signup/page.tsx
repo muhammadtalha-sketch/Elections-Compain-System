@@ -1,61 +1,108 @@
-// TODO: Backend Integration
-// TODO: JWT Authentication — POST /api/auth/signup
-// TODO: Send verification email after registration
-// TODO: Hash password with bcrypt on server side
-// TODO: Return JWT token and redirect to dashboard
-
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Vote, UserPlus, Shield } from "lucide-react";
+import { Eye, EyeOff, Vote, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 export default function SignupPage() {
-  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirm: "" });
+  const [showPw,      setShowPw]      = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [form, setForm] = useState({
-    name: "", email: "", phone: "", password: "", confirmPassword: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors,      setErrors]      = useState<Record<string, string>>({});
+  const [isLoading,   setIsLoading]   = useState(false);
+  const [done,        setDone]        = useState(false);
 
   const setField = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((p) => ({ ...p, [key]: e.target.value }));
-    setErrors((p) => ({ ...p, [key]: "" }));
+    setForm(p => ({ ...p, [key]: e.target.value }));
+    setErrors(p => ({ ...p, [key]: "" }));
   };
 
-  const validate = () => {
+  const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = "Name is required";
+    if (!form.name.trim() || form.name.trim().length < 2) errs.name = "Full name is required (min 2 chars)";
     if (!form.email.includes("@")) errs.email = "Valid email required";
-    if (!/^0[0-9]{3}-[0-9]{7}$/.test(form.phone)) errs.phone = "Format: 0300-1234567";
+    if (form.phone && !/^[0-9\-+ ]{7,15}$/.test(form.phone)) errs.phone = "Enter a valid phone number";
     if (form.password.length < 8) errs.password = "Minimum 8 characters";
-    if (form.password !== form.confirmPassword) errs.confirmPassword = "Passwords do not match";
-    return errs;
+    if (form.password !== form.confirm) errs.confirm = "Passwords do not match";
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    if (!validate()) return;
+
     setIsLoading(true);
-    // TODO: Backend Integration
-    // const res = await fetch('/api/auth/signup', { method: 'POST', body: JSON.stringify(form) })
-    await new Promise((r) => setTimeout(r, 1500));
+
+    const { data, error } = await supabase.auth.signUp({
+      email:    form.email,
+      password: form.password,
+      options: {
+        data: { full_name: form.name.trim() },
+      },
+    });
+
+    if (error) {
+      setErrors({ _: error.message });
+      setIsLoading(false);
+      return;
+    }
+
+    // Create profile immediately (Viewer role by default)
+    if (data.user) {
+      await supabase.from('profiles').upsert({
+        id:        data.user.id,
+        full_name: form.name.trim(),
+        email:     form.email.toLowerCase(),
+        phone:     form.phone.trim() || null,
+        role:      'Viewer',
+        is_active: true,
+      }, { onConflict: 'id' });
+    }
+
+    // If email confirmation required → show success message; otherwise redirect
+    if (data.session) {
+      toast.success("Account created! Welcome to ECS Portal.");
+      router.push("/dashboard");
+    } else {
+      setDone(true);
+    }
+
     setIsLoading(false);
-    window.location.href = "/dashboard";
   };
 
-  const fields = [
-    { key: "name", label: "Full Name", type: "text", placeholder: "Muhammad Ali" },
-    { key: "email", label: "Email Address", type: "email", placeholder: "name@example.com" },
-    { key: "phone", label: "Phone Number", type: "tel", placeholder: "0300-1234567" },
-  ];
+  if (done) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-sm text-center"
+        >
+          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center mx-auto mb-5">
+            <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Check your email</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            We sent a confirmation link to <strong>{form.email}</strong>. Click it to activate your account.
+          </p>
+          <Link href="/login">
+            <Button variant="outline" size="sm">Back to Sign In</Button>
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
@@ -67,7 +114,7 @@ export default function SignupPage() {
       >
         <div className="flex items-center gap-2 mb-8">
           <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-lg shadow-primary/30">
-            <Vote className="w-4.5 h-4.5 text-white" />
+            <Vote className="w-4 h-4 text-white" />
           </div>
           <div>
             <p className="font-extrabold text-foreground leading-none">ECS Portal</p>
@@ -82,62 +129,59 @@ export default function SignupPage() {
 
         <div className="bg-card border border-border rounded-2xl shadow-sm p-6">
           <form onSubmit={handleSignup} className="space-y-4">
-            {fields.map((field) => (
-              <div key={field.key}>
-                <Label className="text-xs font-semibold mb-1.5 block">{field.label}</Label>
+            {errors._ && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2.5 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <p className="text-xs font-medium">{errors._}</p>
+              </motion.div>
+            )}
+
+            {[
+              { key: "name",  label: "Full Name",     type: "text",  placeholder: "Muhammad Ali",       auto: "name"  },
+              { key: "email", label: "Email Address",  type: "email", placeholder: "name@example.com",   auto: "email" },
+              { key: "phone", label: "Phone Number",   type: "tel",   placeholder: "0300-1234567 (optional)", auto: "tel" },
+            ].map((f) => (
+              <div key={f.key}>
+                <Label className="text-xs font-semibold mb-1.5 block">{f.label}</Label>
                 <Input
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  value={form[field.key as keyof typeof form]}
-                  onChange={setField(field.key)}
-                  className={cn("h-9 text-sm", field.key === "phone" && "font-mono", errors[field.key] && "border-destructive")}
-                  autoComplete={field.key === "email" ? "email" : field.key === "phone" ? "tel" : "name"}
+                  type={f.type}
+                  placeholder={f.placeholder}
+                  value={form[f.key as keyof typeof form]}
+                  onChange={setField(f.key)}
+                  className={cn("h-9 text-sm", f.key === "phone" && "font-mono", errors[f.key] && "border-destructive")}
+                  autoComplete={f.auto}
                 />
-                {errors[field.key] && (
-                  <p className="text-[10px] text-destructive mt-1">{errors[field.key]}</p>
-                )}
+                {errors[f.key] && <p className="text-[10px] text-destructive mt-1">{errors[f.key]}</p>}
               </div>
             ))}
 
-            {/* Password */}
-            <div>
-              <Label className="text-xs font-semibold mb-1.5 block">Password</Label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Minimum 8 characters"
-                  value={form.password}
-                  onChange={setField("password")}
-                  className={cn("h-9 text-sm pr-10", errors.password && "border-destructive")}
-                  autoComplete="new-password"
-                />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {[
+              { key: "password", label: "Password",         show: showPw,      toggle: () => setShowPw(p => !p),      auto: "new-password" },
+              { key: "confirm",  label: "Confirm Password", show: showConfirm, toggle: () => setShowConfirm(p => !p), auto: "new-password" },
+            ].map((f) => (
+              <div key={f.key}>
+                <Label className="text-xs font-semibold mb-1.5 block">{f.label}</Label>
+                <div className="relative">
+                  <Input
+                    type={f.show ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={form[f.key as keyof typeof form]}
+                    onChange={setField(f.key)}
+                    className={cn("h-9 text-sm pr-10", errors[f.key] && "border-destructive")}
+                    autoComplete={f.auto}
+                  />
+                  <button type="button" onClick={f.toggle}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {f.show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors[f.key] && <p className="text-[10px] text-destructive mt-1">{errors[f.key]}</p>}
               </div>
-              {errors.password && <p className="text-[10px] text-destructive mt-1">{errors.password}</p>}
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <Label className="text-xs font-semibold mb-1.5 block">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  type={showConfirm ? "text" : "password"}
-                  placeholder="Re-enter your password"
-                  value={form.confirmPassword}
-                  onChange={setField("confirmPassword")}
-                  className={cn("h-9 text-sm pr-10", errors.confirmPassword && "border-destructive")}
-                  autoComplete="new-password"
-                />
-                <button type="button" onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.confirmPassword && <p className="text-[10px] text-destructive mt-1">{errors.confirmPassword}</p>}
-            </div>
+            ))}
 
             <Button
               type="submit"
@@ -151,13 +195,10 @@ export default function SignupPage() {
                     transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
                     className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                   />
-                  Creating account...
+                  Creating account…
                 </>
               ) : (
-                <>
-                  <UserPlus className="w-4 h-4" />
-                  Create Account
-                </>
+                <><UserPlus className="w-4 h-4" /> Create Account</>
               )}
             </Button>
           </form>
@@ -167,14 +208,6 @@ export default function SignupPage() {
           Already have an account?{" "}
           <Link href="/login" className="text-primary font-semibold hover:underline">Sign in</Link>
         </p>
-
-        <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
-          <Shield className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <p className="text-[10px] text-muted-foreground">
-            {/* TODO: JWT Authentication — Backend not connected yet */}
-            Demo mode only. No data is stored or transmitted.
-          </p>
-        </div>
       </motion.div>
     </div>
   );

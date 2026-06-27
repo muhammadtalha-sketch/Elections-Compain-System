@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu, Bell, Sun, Moon, Search, ChevronDown,
   User, LogOut, Settings, Shield,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -20,37 +20,51 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth-context";
+import { initials, ROLE_BADGE } from "@/lib/rbac";
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
-  "/dashboard": { title: "Dashboard", subtitle: "Overview of your campaign data" },
-  "/dashboard/members": { title: "Members", subtitle: "Manage registered campaign members" },
-  "/dashboard/search": { title: "Search Records", subtitle: "Advanced search and filter members" },
-  "/dashboard/add-member": { title: "Add Member", subtitle: "Register a new campaign member" },
-  "/dashboard/import": { title: "Import Data", subtitle: "Bulk import member records" },
-  "/dashboard/analytics": { title: "Analytics", subtitle: "Campaign insights and statistics" },
-  "/dashboard/users": { title: "Users", subtitle: "Manage system users and permissions" },
-  "/dashboard/activity-logs": { title: "Activity Logs", subtitle: "Track all system activities" },
-  "/dashboard/settings": { title: "Settings", subtitle: "Configure system preferences" },
+  "/dashboard":             { title: "Dashboard",      subtitle: "Overview of your campaign data" },
+  "/dashboard/members":     { title: "Members",         subtitle: "Manage registered campaign members" },
+  "/dashboard/search":      { title: "Search Records",  subtitle: "Advanced search and filter members" },
+  "/dashboard/add-member":  { title: "Add Member",      subtitle: "Register a new campaign member" },
+  "/dashboard/import":      { title: "Import Data",     subtitle: "Bulk import member records" },
+  "/dashboard/analytics":   { title: "Analytics",       subtitle: "Campaign insights and statistics" },
+  "/dashboard/users":       { title: "Users",           subtitle: "Manage system users and permissions" },
+  "/dashboard/activity-logs":{ title: "Activity Logs",  subtitle: "Track all system activities" },
+  "/dashboard/settings":    { title: "Settings",        subtitle: "Configure system preferences" },
+  "/dashboard/profile":     { title: "My Profile",      subtitle: "Manage your account settings" },
 };
 
 const NOTIFICATIONS = [
-  { id: 1, title: "Import Completed", desc: "45 members imported successfully", time: "2m ago", unread: true, type: "success" },
-  { id: 2, title: "New Member Added", desc: "SLK-0120 added by Fatima Zahra", time: "15m ago", unread: true, type: "info" },
-  { id: 3, title: "Export Ready", desc: "Hajipura area export is ready", time: "1h ago", unread: false, type: "info" },
-  { id: 4, title: "Low Storage Warning", desc: "Database at 78% capacity", time: "3h ago", unread: false, type: "warning" },
+  { id: 1, title: "Import Completed",  desc: "45 members imported successfully",   time: "2m ago",  unread: true,  type: "success" },
+  { id: 2, title: "New Member Added",  desc: "SLK-0120 added by Fatima Zahra",    time: "15m ago", unread: true,  type: "info"    },
+  { id: 3, title: "Export Ready",      desc: "Hajipura area export is ready",       time: "1h ago",  unread: false, type: "info"    },
+  { id: 4, title: "Low Storage",       desc: "Database at 78% capacity",            time: "3h ago",  unread: false, type: "warning" },
 ];
 
-interface TopNavbarProps {
-  onMenuToggle: () => void;
-}
+interface TopNavbarProps { onMenuToggle: () => void }
 
 export function TopNavbar({ onMenuToggle }: TopNavbarProps) {
-  const pathname = usePathname();
+  const pathname   = usePathname();
+  const router     = useRouter();
   const { theme, setTheme } = useTheme();
+  const { user, profile, role, signOut } = useAuth();
   const [searchValue, setSearchValue] = useState("");
+  const [signingOut,  setSigningOut]  = useState(false);
 
-  const pageInfo = PAGE_TITLES[pathname] || { title: "Dashboard", subtitle: "" };
-  const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length;
+  const pageInfo     = PAGE_TITLES[pathname] ?? { title: "Dashboard", subtitle: "" };
+  const unreadCount  = NOTIFICATIONS.filter(n => n.unread).length;
+  const displayName  = profile?.full_name ?? user?.email?.split("@")[0] ?? "User";
+  const displayEmail = user?.email ?? "";
+  const avatarUrl    = profile?.avatar_url ?? null;
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    await signOut();
+    toast.success("Signed out successfully");
+    router.push("/login");
+  };
 
   return (
     <header className="sticky top-0 z-20 flex items-center gap-3 px-4 lg:px-6 py-3.5 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -105,19 +119,16 @@ export function TopNavbar({ onMenuToggle }: TopNavbarProps) {
           </div>
           <div className="divide-y divide-border">
             {NOTIFICATIONS.map((notif) => (
-              <div
-                key={notif.id}
-                className={cn(
-                  "px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors",
-                  notif.unread && "bg-primary/5"
-                )}
-              >
+              <div key={notif.id} className={cn(
+                "px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors",
+                notif.unread && "bg-primary/5"
+              )}>
                 <div className="flex items-start gap-2">
                   <div className={cn(
                     "w-2 h-2 rounded-full mt-1.5 flex-shrink-0",
                     notif.type === "success" && "bg-green-500",
                     notif.type === "warning" && "bg-amber-500",
-                    notif.type === "info" && "bg-primary",
+                    notif.type === "info"    && "bg-primary",
                   )} />
                   <div>
                     <p className="text-xs font-semibold text-foreground">{notif.title}</p>
@@ -140,41 +151,48 @@ export function TopNavbar({ onMenuToggle }: TopNavbarProps) {
       <DropdownMenu>
         <DropdownMenuTrigger className="inline-flex items-center gap-2 h-8 pl-1 pr-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors cursor-pointer outline-none">
           <Avatar className="h-6 w-6">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
             <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
-              AM
+              {initials(displayName)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:block text-xs font-medium text-foreground">Arif Mehmood</span>
+          <span className="hidden sm:block text-xs font-medium text-foreground">{displayName}</span>
           <ChevronDown className="w-3 h-3 text-muted-foreground" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
+
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>
             <div>
-              <p className="text-sm font-semibold">Arif Mehmood</p>
-              <p className="text-xs text-muted-foreground font-normal">arif.mehmood@ecs.pk</p>
-              <Badge className="mt-1 text-[10px] h-4 px-1.5 bg-primary/10 text-primary border-primary/20 font-medium">
-                Administrator
-              </Badge>
+              <p className="text-sm font-semibold truncate">{displayName}</p>
+              <p className="text-xs text-muted-foreground font-normal truncate">{displayEmail}</p>
+              {role && (
+                <span className={cn(
+                  "inline-block mt-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                  ROLE_BADGE[role]
+                )}>
+                  {role}
+                </span>
+              )}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="gap-2 text-sm cursor-pointer">
-            <User className="w-3.5 h-3.5" />
-            Profile
+          <DropdownMenuItem className="gap-2 text-sm cursor-pointer" onClick={() => router.push("/dashboard/profile")}>
+            <User className="w-3.5 h-3.5" /> My Profile
           </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2 text-sm cursor-pointer">
-            <Settings className="w-3.5 h-3.5" />
-            Settings
+          <DropdownMenuItem className="gap-2 text-sm cursor-pointer" onClick={() => router.push("/dashboard/settings")}>
+            <Settings className="w-3.5 h-3.5" /> Settings
           </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2 text-sm cursor-pointer">
-            <Shield className="w-3.5 h-3.5" />
-            Security
+          <DropdownMenuItem className="gap-2 text-sm cursor-pointer" onClick={() => router.push("/dashboard/profile?tab=security")}>
+            <Shield className="w-3.5 h-3.5" /> Security
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {/* TODO: Backend Integration — JWT logout, session clearing */}
-          <DropdownMenuItem className="gap-2 text-sm text-destructive cursor-pointer focus:text-destructive">
+          <DropdownMenuItem
+            className="gap-2 text-sm text-destructive cursor-pointer focus:text-destructive"
+            onClick={handleSignOut}
+            disabled={signingOut}
+          >
             <LogOut className="w-3.5 h-3.5" />
-            Sign Out
+            {signingOut ? "Signing out…" : "Sign Out"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
