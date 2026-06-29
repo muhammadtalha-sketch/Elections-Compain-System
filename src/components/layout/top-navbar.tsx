@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -161,20 +161,22 @@ export function TopNavbar({ onMenuToggle }: TopNavbarProps) {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>
-            <div>
-              <p className="text-sm font-semibold truncate">{displayName}</p>
-              <p className="text-xs text-muted-foreground font-normal truncate">{displayEmail}</p>
-              {role && (
-                <span className={cn(
-                  "inline-block mt-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
-                  ROLE_BADGE[role]
-                )}>
-                  {role}
-                </span>
-              )}
-            </div>
-          </DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              <div>
+                <p className="text-sm font-semibold truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground font-normal truncate">{displayEmail}</p>
+                {role && (
+                  <span className={cn(
+                    "inline-block mt-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                    ROLE_BADGE[role]
+                  )}>
+                    {role}
+                  </span>
+                )}
+              </div>
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2 text-sm cursor-pointer" onClick={() => router.push("/dashboard/profile")}>
             <User className="w-3.5 h-3.5" /> My Profile

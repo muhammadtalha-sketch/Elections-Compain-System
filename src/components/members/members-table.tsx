@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
+  DropdownMenuLabel, DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -297,9 +297,11 @@ export function MembersTable() {
             Columns
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuLabel className="text-xs">
-              Toggle Columns
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs">
+                Toggle Columns
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             {ALL_COLUMNS.map((col) => (
               <DropdownMenuCheckboxItem
