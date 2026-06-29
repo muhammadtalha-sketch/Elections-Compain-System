@@ -325,6 +325,12 @@ export function MemberDetail({ memberId }: { memberId: string }) {
     updated:  <Pencil   className="w-3.5 h-3.5" />,
   };
 
+  const age = member.dob
+    ? Math.floor((Date.now() - new Date(member.dob).getTime()) / (365.25 * 24 * 3600 * 1000))
+    : member.birthYear
+      ? new Date().getFullYear() - member.birthYear
+      : null;
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Back */}
@@ -345,17 +351,27 @@ export function MemberDetail({ memberId }: { memberId: string }) {
             animate={{ opacity: 1, y: 0 }}
             className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
           >
-            {/* Header strip */}
+            {/* Header gradient strip */}
             <div className="h-2 bg-gradient-to-r from-primary to-primary/50" />
 
             <div className="p-6">
               <div className="flex items-start gap-5">
-                <div className={cn(
-                  "w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0 shadow-md",
-                  member.gender === "Male" ? "bg-blue-500" : "bg-pink-500"
-                )}>
-                  {member.name.charAt(0)}
-                </div>
+                {/* Photo or initials avatar */}
+                {member.photoUrl ? (
+                  <img
+                    src={member.photoUrl}
+                    alt={member.name}
+                    className="w-20 h-20 rounded-2xl object-cover border border-border shadow-md flex-shrink-0"
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-md",
+                    member.gender === "Male" ? "bg-gradient-to-br from-blue-400 to-blue-600" : "bg-gradient-to-br from-pink-400 to-pink-600"
+                  )}>
+                    {member.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-xl font-bold text-foreground">{member.name}</h1>
@@ -366,7 +382,20 @@ export function MemberDetail({ memberId }: { memberId: string }) {
                   <p className="text-sm text-muted-foreground mt-0.5">
                     {member.fatherName ? `S/O ${member.fatherName}` : ""}
                   </p>
-                  <p className="text-xs font-mono text-primary mt-1">#{member.serialNumber}</p>
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <span className="text-xs font-mono text-primary font-semibold">#{member.serialNumber}</span>
+                    <Badge variant="outline" className={cn(
+                      "text-[10px] px-1.5 py-0 h-4 border-0 font-semibold",
+                      member.gender === "Male"
+                        ? "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+                        : "bg-pink-50 text-pink-700 dark:bg-pink-950/50 dark:text-pink-300"
+                    )}>
+                      {member.gender}
+                    </Badge>
+                    {age !== null && (
+                      <span className="text-xs text-muted-foreground">{age} yrs</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -409,14 +438,17 @@ export function MemberDetail({ memberId }: { memberId: string }) {
 
               {/* Details grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-5 border-t border-border">
-                {[
-                  { icon: User,     label: "Gender",       value: member.gender },
+                {([
+                  { icon: User,     label: "Gender",       value: member.gender || "—" },
                   { icon: Calendar, label: "Date of Birth", value: member.dob || "—" },
-                  { icon: Hash,     label: "Birth Year",   value: member.birthYear || "—" },
+                  { icon: Hash,     label: "Age",          value: age !== null ? `${age} years` : "—" },
                   { icon: MapPin,   label: "Area",         value: member.area || "—" },
                   { icon: Phone,    label: "Phone",        value: member.phoneNumber || "—" },
-                  { icon: Calendar, label: "Reg. Date",    value: member.registrationDate },
-                ].map(({ icon: Icon, label, value }) => (
+                  { icon: Calendar, label: "Reg. Date",    value: member.registrationDate || "—" },
+                  { icon: Users,    label: "Member Bar",   value: member.requestMemberBar || "—" },
+                  { icon: Clock,    label: "Created",      value: member.createdAt ? new Date(String(member.createdAt)).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : "—" },
+                  { icon: Activity, label: "Updated",      value: member.updatedAt ? new Date(String(member.updatedAt)).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : "—" },
+                ] as { icon: React.ElementType; label: string; value: string }[]).map(({ icon: Icon, label, value }) => (
                   <div key={label} className="space-y-0.5">
                     <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                       <Icon className="w-3 h-3" /> {label}
@@ -432,6 +464,15 @@ export function MemberDetail({ memberId }: { memberId: string }) {
                     <MapPin className="w-3 h-3" /> Address
                   </p>
                   <p className="text-sm text-foreground">{member.address}</p>
+                </div>
+              )}
+
+              {(member.remarks || member.notes) && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" /> Notes / Remarks
+                  </p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{member.notes || member.remarks}</p>
                 </div>
               )}
             </div>

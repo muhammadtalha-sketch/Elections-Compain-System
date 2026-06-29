@@ -407,8 +407,12 @@ export function MembersTable() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: idx * 0.02 }}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('input, button, a, [role="menuitem"], select')) return;
+                    router.push(`/dashboard/members/${member.id ?? ""}`);
+                  }}
                   className={cn(
-                    "border-b border-border/60 hover:bg-muted/30 transition-colors",
+                    "border-b border-border/60 hover:bg-muted/30 transition-colors cursor-pointer",
                     selectedIds.has(member.id ?? "") && "bg-primary/5",
                   )}
                 >
