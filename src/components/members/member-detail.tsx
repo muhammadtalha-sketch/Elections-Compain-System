@@ -26,7 +26,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/auth-context";
 import { initials, ROLE_BADGE } from "@/lib/rbac";
-import { getMemberById, updateInterestStatus, FirestoreMember } from "@/services/memberService";
+import { getMemberById, updateInterestStatus, updateMember, FirestoreMember } from "@/services/memberService";
+import { PhotoUpload } from "./photo-upload";
 import {
   getComments, addComment, updateComment, deleteComment, CommentWithAuthor,
 } from "@/services/commentService";
@@ -177,6 +178,9 @@ export function MemberDetail({ memberId }: { memberId: string }) {
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
   const commentRef = useRef<HTMLTextAreaElement>(null);
+  const [editingPhoto, setEditingPhoto] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<string | null | undefined>(undefined);
+  const [savingPhoto, setSavingPhoto] = useState(false);
 
   const buildTimeline = useCallback((m: FirestoreMember, cmts: CommentWithAuthor[]): TimelineItem[] => {
     const items: TimelineItem[] = [];
@@ -315,6 +319,22 @@ export function MemberDetail({ memberId }: { memberId: string }) {
       toast.success("Comment deleted");
     } catch {
       toast.error("Failed to delete comment");
+    }
+  };
+
+  const handleSavePhoto = async () => {
+    if (pendingPhoto === undefined || !member) return;
+    setSavingPhoto(true);
+    try {
+      await updateMember(memberId, { photoUrl: pendingPhoto }, actorName);
+      setMember((m) => m ? { ...m, photoUrl: pendingPhoto } : m);
+      setEditingPhoto(false);
+      setPendingPhoto(undefined);
+      toast.success(pendingPhoto ? "Photo updated" : "Photo removed");
+    } catch {
+      toast.error("Failed to save photo");
+    } finally {
+      setSavingPhoto(false);
     }
   };
 
@@ -494,6 +514,43 @@ export function MemberDetail({ memberId }: { memberId: string }) {
                   <p className="text-sm text-foreground whitespace-pre-wrap">{member.notes || member.remarks}</p>
                 </div>
               )}
+
+              {/* ── Edit Photo ── */}
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Profile Photo</p>
+                  {!editingPhoto ? (
+                    <button
+                      onClick={() => { setEditingPhoto(true); setPendingPhoto(member.photoUrl ?? null); }}
+                      className="text-[11px] font-semibold text-primary hover:underline"
+                    >
+                      {member.photoUrl ? "Edit photo" : "Add photo"}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleSavePhoto}
+                        disabled={savingPhoto || pendingPhoto === undefined}
+                        className="text-[11px] font-semibold text-primary hover:underline disabled:opacity-50"
+                      >
+                        {savingPhoto ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingPhoto(false); setPendingPhoto(undefined); }}
+                        className="text-[11px] font-semibold text-muted-foreground hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {editingPhoto && (
+                  <PhotoUpload
+                    value={pendingPhoto}
+                    onChange={(url) => setPendingPhoto(url)}
+                  />
+                )}
+              </div>
             </div>
           </motion.div>
 
@@ -584,39 +641,40 @@ export function MemberDetail({ memberId }: { memberId: string }) {
               {timeline.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-6">No activity yet.</p>
               ) : (
-                <div className="relative pl-5">
-                  {/* Vertical line */}
-                  <div className="absolute left-2 top-1 bottom-1 w-px bg-border" />
-
-                  <div className="space-y-5">
-                    {timeline.map((item) => (
-                      <div key={item.id} className="relative">
-                        {/* Dot */}
+                <div className="space-y-1">
+                  {timeline.map((item, idx) => (
+                    <div key={item.id} className="flex items-start gap-3">
+                      {/* Icon + connector */}
+                      <div className="flex flex-col items-center flex-shrink-0">
                         <div className={cn(
-                          "absolute -left-[13px] top-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center",
+                          "w-6 h-6 rounded-full border-2 border-background flex items-center justify-center flex-shrink-0",
                           item.type === "created"  && "bg-teal-500 text-white",
                           item.type === "interest" && "bg-primary text-primary-foreground",
                           item.type === "comment"  && "bg-violet-500 text-white",
                           item.type === "updated"  && "bg-amber-500 text-white",
                         )}>
-                          <span className="scale-[0.6]">{TIMELINE_ICONS[item.type]}</span>
+                          <span className="scale-[0.65]">{TIMELINE_ICONS[item.type]}</span>
                         </div>
-
-                        <div>
-                          <p className="text-xs font-semibold text-foreground leading-snug">{item.label}</p>
-                          {item.detail && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{item.detail}</p>
-                          )}
-                          {item.actor && (
-                            <p className="text-[10px] text-muted-foreground mt-0.5">by {item.actor}</p>
-                          )}
-                          <p className="text-[10px] text-muted-foreground/70 mt-1">
-                            {timeAgo(item.timestamp)}
-                          </p>
-                        </div>
+                        {idx < timeline.length - 1 && (
+                          <div className="w-px flex-1 bg-border mt-1" style={{ minHeight: 20 }} />
+                        )}
                       </div>
-                    ))}
-                  </div>
+
+                      {/* Content — flex-1 prevents overflow into icon */}
+                      <div className="flex-1 min-w-0 pb-4">
+                        <p className="text-xs font-semibold text-foreground leading-snug break-words">{item.label}</p>
+                        {item.detail && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 break-words">{item.detail}</p>
+                        )}
+                        {item.actor && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">by {item.actor}</p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                          {timeAgo(item.timestamp)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

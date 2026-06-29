@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { addMember, getNextSerialNumber, getDistinctAreas, getDistinctBars } from "@/services/memberService";
 import { useAuth } from "@/contexts/auth-context";
+import { PhotoUpload } from "@/components/members/photo-upload";
 import { cn } from "@/lib/utils";
 
 interface FormData {
@@ -67,6 +68,8 @@ export function AddMemberForm() {
   const [nextSerial,        setNextSerial]        = useState<number | null>(null);
   const [serialLoading,     setSerialLoading]     = useState(true);
   const [serialError,       setSerialError]       = useState(false);
+
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   // submission
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,6 +130,7 @@ export function AddMemberForm() {
         registrationDate: data.registrationDate,
         status:           "Active",
         remarks:          data.remarks || "",
+        photoUrl:         photoUrl || null,
       }, profile?.full_name ?? null);
 
       setSaved({
@@ -154,6 +158,7 @@ export function AddMemberForm() {
     setArea("");
     setAreaQuery("");
     setMemberBar("");
+    setPhotoUrl(null);
     setSaved(null);
     // Re-fetch next serial
     setSerialLoading(true);
@@ -242,6 +247,11 @@ export function AddMemberForm() {
       </div>
 
       <div className="p-6 space-y-7">
+
+        {/* ── Profile Picture ──────────────────────────────────── */}
+        <Section label="Profile Picture">
+          <PhotoUpload value={photoUrl} onChange={setPhotoUrl} />
+        </Section>
 
         {/* ── Section 1: Identity ──────────────────────────────── */}
         <Section label="Identity">
