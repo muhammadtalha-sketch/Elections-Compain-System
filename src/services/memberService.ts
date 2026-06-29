@@ -382,6 +382,31 @@ export async function updateInterestStatus(
   });
 }
 
+export async function getAdjacentMemberIds(
+  serialNumber: number,
+): Promise<{ prevId: string | null; nextId: string | null }> {
+  const [prevResult, nextResult] = await Promise.all([
+    supabase
+      .from("members")
+      .select("id")
+      .lt("serial_number", serialNumber)
+      .order("serial_number", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("members")
+      .select("id")
+      .gt("serial_number", serialNumber)
+      .order("serial_number", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  return {
+    prevId: prevResult.data?.id ?? null,
+    nextId: nextResult.data?.id ?? null,
+  };
+}
+
 export async function getDistinctBars(): Promise<string[]> {
   const { data, error } = await supabase
     .from("members")

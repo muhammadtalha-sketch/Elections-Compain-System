@@ -7,6 +7,7 @@ import {
   ArrowLeft, ThumbsUp, ThumbsDown, Clock, User, MessageSquare,
   Send, Pencil, X, Check, Loader2, AlertCircle,
   Calendar, Phone, MapPin, Users, Hash, Activity,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 function timeAgo(date: string | Date): string {
   const secs = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
@@ -26,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/auth-context";
 import { initials, ROLE_BADGE } from "@/lib/rbac";
-import { getMemberById, updateInterestStatus, updateMember, FirestoreMember } from "@/services/memberService";
+import { getMemberById, updateInterestStatus, updateMember, getAdjacentMemberIds, FirestoreMember } from "@/services/memberService";
 import { PhotoUpload } from "./photo-upload";
 import {
   getComments, addComment, updateComment, deleteComment, CommentWithAuthor,
@@ -181,6 +182,7 @@ export function MemberDetail({ memberId }: { memberId: string }) {
   const [editingPhoto, setEditingPhoto] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<string | null | undefined>(undefined);
   const [savingPhoto, setSavingPhoto] = useState(false);
+  const [adjNav, setAdjNav] = useState<{ prevId: string | null; nextId: string | null }>({ prevId: null, nextId: null });
 
   const buildTimeline = useCallback((m: FirestoreMember, cmts: CommentWithAuthor[]): TimelineItem[] => {
     const items: TimelineItem[] = [];
@@ -228,6 +230,11 @@ export function MemberDetail({ memberId }: { memberId: string }) {
       setInterest(m.interestStatus ?? "Pending");
       setComments(cmts);
       setTimeline(buildTimeline(m, cmts));
+      const serial = parseInt(m.serialNumber, 10);
+      if (!isNaN(serial)) {
+        const adj = await getAdjacentMemberIds(serial);
+        setAdjNav(adj);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -236,6 +243,17 @@ export function MemberDetail({ memberId }: { memberId: string }) {
   }, [memberId, buildTimeline]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT") return;
+      if (e.key === "ArrowLeft" && adjNav.prevId) router.push(`/dashboard/members/${adjNav.prevId}`);
+      if (e.key === "ArrowRight" && adjNav.nextId) router.push(`/dashboard/members/${adjNav.nextId}`);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [adjNav, router]);
 
   const handleInterest = async (status: InterestStatus) => {
     if (!user) return;
@@ -680,6 +698,36 @@ export function MemberDetail({ memberId }: { memberId: string }) {
             </div>
           </motion.div>
         </div>
+      </div>
+
+      {/* Member navigation */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-border">
+        <button
+          onClick={() => adjNav.prevId && router.push(`/dashboard/members/${adjNav.prevId}`)}
+          disabled={!adjNav.prevId}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all",
+            adjNav.prevId
+              ? "border-border text-foreground hover:bg-muted"
+              : "border-border/40 text-muted-foreground/40 cursor-not-allowed"
+          )}
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Previous Member
+        </button>
+        <button
+          onClick={() => adjNav.nextId && router.push(`/dashboard/members/${adjNav.nextId}`)}
+          disabled={!adjNav.nextId}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all sm:flex-row-reverse",
+            adjNav.nextId
+              ? "border-border text-foreground hover:bg-muted"
+              : "border-border/40 text-muted-foreground/40 cursor-not-allowed"
+          )}
+        >
+          <ChevronRight className="w-4 h-4" />
+          Next Member
+        </button>
       </div>
     </div>
   );
