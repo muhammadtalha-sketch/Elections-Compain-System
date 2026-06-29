@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Filter, RotateCcw, ChevronRight, Users, Loader2, AlertCircle, ChevronsUpDown, Check, MapPin } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ const EMPTY_FILTERS: Filters = {
 };
 
 export function SearchPanel() {
+  const router = useRouter();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [results, setResults] = useState<FirestoreMember[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -371,7 +373,7 @@ export function SearchPanel() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/40 border-b border-border">
-                      {["Serial #", "Name", "Father Name", "Gender", "DOB", "Area", "Phone", "Member Bar", "Reg. Date", "Interest"].map((h) => (
+                      {["Photo", "Serial #", "Name", "Father Name", "Gender", "DOB", "Area", "Phone", "Member Bar", "Reg. Date", "Interest"].map((h) => (
                         <th key={h} className="px-3 py-2.5 text-left font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -383,8 +385,28 @@ export function SearchPanel() {
                         initial={{ opacity: 0, x: -5 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.012 }}
-                        className="border-b border-border/60 hover:bg-muted/30 transition-colors"
+                        onClick={() => router.push(`/dashboard/members/${member.id}`)}
+                        className="border-b border-border/60 hover:bg-muted/30 transition-colors cursor-pointer"
                       >
+                        <td className="px-3 py-2.5">
+                          {member.photoUrl ? (
+                            <img
+                              src={member.photoUrl}
+                              alt={member.name}
+                              className="w-8 h-8 rounded-full object-cover border border-border"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold",
+                              member.gender === "Male"
+                                ? "bg-gradient-to-br from-blue-500 to-blue-600"
+                                : "bg-gradient-to-br from-pink-500 to-pink-600"
+                            )}>
+                              {member.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-3 py-2.5 font-mono font-medium text-primary">{member.serialNumber}</td>
                         <td className="px-3 py-2.5 font-medium text-foreground whitespace-nowrap">{member.name}</td>
                         <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{member.fatherName}</td>

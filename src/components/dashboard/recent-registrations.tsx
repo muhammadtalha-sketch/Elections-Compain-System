@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Clock, AlertCircle, RefreshCw } from "lucide-react";
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { getAllMembers, FirestoreMember } from "@/services/memberService";
 
 export function RecentRegistrations() {
+  const router = useRouter();
   const [members, setMembers] = useState<FirestoreMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,26 +91,39 @@ export function RecentRegistrations() {
       )}
 
       {!loading && !error && members.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {members.map((member, index) => (
             <motion.div
               key={member.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.5 + index * 0.05 }}
-              className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors group cursor-pointer"
+              onClick={() => router.push(`/dashboard/members/${member.id}`)}
+              className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 active:bg-muted/70 transition-colors group cursor-pointer"
             >
-              <div className={cn(
-                "w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0",
-                member.gender === "Male"
-                  ? "bg-gradient-to-br from-blue-500 to-blue-600"
-                  : "bg-gradient-to-br from-pink-500 to-pink-600"
-              )}>
-                {member.name.charAt(0)}
-              </div>
+              {/* Avatar: photo or initials fallback */}
+              {member.photoUrl ? (
+                <img
+                  src={member.photoUrl}
+                  alt={member.name}
+                  className="w-8 h-8 rounded-xl object-cover flex-shrink-0 border border-border"
+                  loading="lazy"
+                />
+              ) : (
+                <div className={cn(
+                  "w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0",
+                  member.gender === "Male"
+                    ? "bg-gradient-to-br from-blue-500 to-blue-600"
+                    : "bg-gradient-to-br from-pink-500 to-pink-600"
+                )}>
+                  {member.name.charAt(0).toUpperCase()}
+                </div>
+              )}
 
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate">{member.name}</p>
+                <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                  {member.name}
+                </p>
                 <p className="text-[10px] text-muted-foreground truncate">
                   {member.area} · {member.serialNumber}
                 </p>
