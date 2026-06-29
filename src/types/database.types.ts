@@ -4,11 +4,11 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[]
+  | Json[];
 
-export type UserRole      = 'Super Admin' | 'Admin' | 'User'
-export type Gender        = 'Male' | 'Female' | 'Other'
-export type ImportStatus  = 'Processing' | 'Completed' | 'Failed'
+export type UserRole       = 'Super Admin' | 'Admin' | 'User'
+export type Gender         = 'Male' | 'Female' | 'Other'
+export type ImportStatus   = 'Processing' | 'Completed' | 'Failed'
 export type InterestStatus = 'Interested' | 'Not Interested' | 'Pending'
 export type ActivityAction =
   | 'LOGIN'
@@ -28,38 +28,38 @@ export interface Database {
     Tables: {
       profiles: {
         Row: {
-          id:         string
-          full_name:  string | null
-          email:      string | null
-          phone:      string | null
-          role:       UserRole
-          avatar_url: string | null
-          is_active:  boolean
-          created_at: string
-          updated_at: string
-        }
+          id: string;
+          full_name: string | null;
+          email: string | null;
+          phone: string | null;
+          role: UserRole;
+          avatar_url: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
         Insert: {
-          id:         string
-          full_name?: string | null
-          email?:     string | null
-          phone?:     string | null
-          role?:      UserRole
-          avatar_url?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
+          id: string;
+          full_name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          role?: UserRole;
+          avatar_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
         Update: {
-          full_name?:  string | null
-          email?:      string | null
-          phone?:      string | null
-          role?:       UserRole
-          avatar_url?: string | null
-          is_active?:  boolean
-          updated_at?: string
-        }
-        Relationships: []
-      }
+          full_name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          role?: UserRole;
+          avatar_url?: string | null;
+          is_active?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
 
       members: {
         Row: {
@@ -76,6 +76,7 @@ export interface Database {
           phone_number:          string | null
           request_member_bar:    string | null
           registration_date:     string
+          photo_url:             string | null
           remarks:               string | null
           created_by:            string | null
           updated_by:            string | null
@@ -100,6 +101,7 @@ export interface Database {
           phone_number?:          string | null
           request_member_bar?:    string | null
           registration_date?:     string
+          photo_url?:             string | null
           remarks?:               string | null
           created_by?:            string | null
           updated_by?:            string | null
@@ -121,6 +123,7 @@ export interface Database {
           phone_number?:          string | null
           request_member_bar?:    string | null
           registration_date?:     string
+          photo_url?:             string | null
           remarks?:               string | null
           updated_by?:            string | null
           updated_at?:            string
@@ -157,194 +160,196 @@ export interface Database {
 
       activity_logs: {
         Row: {
-          id:          string
-          user_id:     string | null
-          action:      ActivityAction
-          table_name:  string | null
-          record_id:   string | null
-          description: string | null
-          created_at:  string
-        }
+          id: string;
+          user_id: string | null;
+          action: ActivityAction;
+          table_name: string | null;
+          record_id: string | null;
+          description: string | null;
+          created_at: string;
+        };
         Insert: {
-          id?:          string
-          user_id?:     string | null
-          action:       ActivityAction
-          table_name?:  string | null
-          record_id?:   string | null
-          description?: string | null
-          created_at?:  string
-        }
+          id?: string;
+          user_id?: string | null;
+          action: ActivityAction;
+          table_name?: string | null;
+          record_id?: string | null;
+          description?: string | null;
+          created_at?: string;
+        };
         Update: {
-          user_id?:     string | null
-          action?:      ActivityAction
-          table_name?:  string | null
-          record_id?:   string | null
-          description?: string | null
-          created_at?:  string
-        }
-        Relationships: []
-      }
+          user_id?: string | null;
+          action?: ActivityAction;
+          table_name?: string | null;
+          record_id?: string | null;
+          description?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
 
       import_history: {
         Row: {
-          id:                  string
-          file_name:           string
-          total_records:       number
-          successful_records:  number
-          failed_records:      number
-          imported_by:         string | null
-          status:              ImportStatus
-          created_at:          string
-        }
+          id: string;
+          file_name: string;
+          total_records: number;
+          successful_records: number;
+          failed_records: number;
+          imported_by: string | null;
+          status: ImportStatus;
+          created_at: string;
+        };
         Insert: {
-          id?:                  string
-          file_name:            string
-          total_records?:       number
-          successful_records?:  number
-          failed_records?:      number
-          imported_by?:         string | null
-          status?:              ImportStatus
-          created_at?:          string
-        }
+          id?: string;
+          file_name: string;
+          total_records?: number;
+          successful_records?: number;
+          failed_records?: number;
+          imported_by?: string | null;
+          status?: ImportStatus;
+          created_at?: string;
+        };
         Update: {
-          total_records?:       number
-          successful_records?:  number
-          failed_records?:      number
-          status?:              ImportStatus
-        }
-        Relationships: []
-      }
+          total_records?: number;
+          successful_records?: number;
+          failed_records?: number;
+          status?: ImportStatus;
+        };
+        Relationships: [];
+      };
 
       saved_searches: {
         Row: {
-          id:          string
-          user_id:     string
-          search_name: string
-          filters:     Json
-          created_at:  string
-        }
+          id: string;
+          user_id: string;
+          search_name: string;
+          filters: Json;
+          created_at: string;
+        };
         Insert: {
-          id?:          string
-          user_id:      string
-          search_name:  string
-          filters?:     Json
-          created_at?:  string
-        }
+          id?: string;
+          user_id: string;
+          search_name: string;
+          filters?: Json;
+          created_at?: string;
+        };
         Update: {
-          search_name?: string
-          filters?:     Json
-        }
-        Relationships: []
-      }
+          search_name?: string;
+          filters?: Json;
+        };
+        Relationships: [];
+      };
 
       dashboard_stats_cache: {
         Row: {
-          id:           string
-          stat_key:     string
-          stat_value:   Json
-          last_updated: string
-        }
+          id: string;
+          stat_key: string;
+          stat_value: Json;
+          last_updated: string;
+        };
         Insert: {
-          id?:           string
-          stat_key:      string
-          stat_value?:   Json
-          last_updated?: string
-        }
+          id?: string;
+          stat_key: string;
+          stat_value?: Json;
+          last_updated?: string;
+        };
         Update: {
-          stat_value?:   Json
-          last_updated?: string
-        }
-        Relationships: []
-      }
-    }
+          stat_value?: Json;
+          last_updated?: string;
+        };
+        Relationships: [];
+      };
+    };
 
     Views: {
       member_statistics_view: {
         Row: {
-          total_members:                number
-          male_members:                 number
-          female_members:               number
-          today_registrations:          number
-          current_month_registrations:  number
-        }
-        Relationships: []
-      }
+          total_members: number;
+          male_members: number;
+          female_members: number;
+          today_registrations: number;
+          current_month_registrations: number;
+        };
+        Relationships: [];
+      };
       area_statistics_view: {
         Row: {
-          area:          string
-          total_members: number
-          male_count:    number
-          female_count:  number
-          other_count:   number
-        }
-        Relationships: []
-      }
-    }
+          area: string;
+          total_members: number;
+          male_count: number;
+          female_count: number;
+          other_count: number;
+        };
+        Relationships: [];
+      };
+    };
 
     Functions: {
       get_next_serial_number: {
-        Args:    Record<never, never>
-        Returns: number
-      }
+        Args: Record<never, never>;
+        Returns: number;
+      };
       get_user_role: {
-        Args:    Record<never, never>
-        Returns: UserRole
-      }
+        Args: Record<never, never>;
+        Returns: UserRole;
+      };
       search_members: {
         Args: {
-          p_query?:         string
-          p_gender?:        string
-          p_area?:          string
-          p_birth_year?:    number
-          p_reg_date_from?: string
-          p_reg_date_to?:   string
-          p_rmb?:           string
-          p_limit?:         number
-          p_offset?:        number
-        }
-        Returns: Database['public']['Tables']['members']['Row'][]
-      }
+          p_query?: string;
+          p_gender?: string;
+          p_area?: string;
+          p_birth_year?: number;
+          p_reg_date_from?: string;
+          p_reg_date_to?: string;
+          p_rmb?: string;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Database["public"]["Tables"]["members"]["Row"][];
+      };
       count_members: {
         Args: {
-          p_query?:         string
-          p_gender?:        string
-          p_area?:          string
-          p_birth_year?:    number
-          p_reg_date_from?: string
-          p_reg_date_to?:   string
-          p_rmb?:           string
-        }
-        Returns: number
-      }
-    }
-  }
+          p_query?: string;
+          p_gender?: string;
+          p_area?: string;
+          p_birth_year?: number;
+          p_reg_date_from?: string;
+          p_reg_date_to?: string;
+          p_rmb?: string;
+        };
+        Returns: number;
+      };
+    };
+  };
 }
 
 // Convenience row types
-export type Profile         = Database['public']['Tables']['profiles']['Row']
-export type Member          = Database['public']['Tables']['members']['Row']
-export type MemberComment   = Database['public']['Tables']['member_comments']['Row']
-export type ActivityLog     = Database['public']['Tables']['activity_logs']['Row']
-export type ImportHistory   = Database['public']['Tables']['import_history']['Row']
-export type SavedSearch     = Database['public']['Tables']['saved_searches']['Row']
-export type DashboardStat   = Database['public']['Tables']['dashboard_stats_cache']['Row']
+export type Profile       = Database['public']['Tables']['profiles']['Row']
+export type Member        = Database['public']['Tables']['members']['Row']
+export type MemberComment = Database['public']['Tables']['member_comments']['Row']
+export type ActivityLog   = Database['public']['Tables']['activity_logs']['Row']
+export type ImportHistory = Database['public']['Tables']['import_history']['Row']
+export type SavedSearch   = Database['public']['Tables']['saved_searches']['Row']
+export type DashboardStat = Database['public']['Tables']['dashboard_stats_cache']['Row']
 
-export type MemberStatistics = Database['public']['Views']['member_statistics_view']['Row']
-export type AreaStatistics   = Database['public']['Views']['area_statistics_view']['Row']
+export type MemberStatistics =
+  Database["public"]["Views"]["member_statistics_view"]["Row"];
+export type AreaStatistics =
+  Database["public"]["Views"]["area_statistics_view"]["Row"];
 
 // Insert / Update helpers
-export type MemberInsert = Database['public']['Tables']['members']['Insert']
-export type MemberUpdate = Database['public']['Tables']['members']['Update']
-export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
-export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+export type MemberInsert = Database["public"]["Tables"]["members"]["Insert"];
+export type MemberUpdate = Database["public"]["Tables"]["members"]["Update"];
+export type ProfileInsert = Database["public"]["Tables"]["profiles"]["Insert"];
+export type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
 
 // Search filter shape (mirrors search_members args)
 export interface MemberSearchFilters {
-  query?:        string
-  gender?:       Gender
-  area?:         string
-  birthYear?:    number
-  regDateFrom?:  string
-  regDateTo?:    string
-  rmb?:          string
+  query?: string;
+  gender?: Gender;
+  area?: string;
+  birthYear?: number;
+  regDateFrom?: string;
+  regDateTo?: string;
+  rmb?: string;
 }
