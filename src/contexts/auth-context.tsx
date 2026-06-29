@@ -32,7 +32,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       let prof = data as Profile | null
 
-      // Ensure Super Admin email always has the Super Admin role
+      // Super Admin always gets their role enforced, regardless of any SELECT error.
+      // We return early here so the error-check below cannot override a successful
+      // Super Admin recovery (e.g. when an RLS hiccup makes the initial read fail).
       if (isSuperAdmin(authUser.email)) {
         if (!prof || prof.role !== 'Super Admin') {
           const upsertData = {
@@ -49,6 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .single()
           prof = (updated ?? { ...upsertData, phone: null, avatar_url: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }) as Profile
         }
+        setProfile(prof)
+        return
       }
 
       // Ignore "no rows" error (first sign-in before profile is created)
