@@ -240,6 +240,37 @@ export interface Database {
         Relationships: [];
       };
 
+      notifications: {
+        Row: {
+          id:           string;
+          recipient_id: string;
+          type:         string;
+          title:        string;
+          body:         string;
+          actor_name:   string | null;
+          entity_type:  string | null;
+          entity_id:    string | null;
+          is_read:      boolean;
+          created_at:   string;
+        };
+        Insert: {
+          id?:          string;
+          recipient_id: string;
+          type:         string;
+          title:        string;
+          body:         string;
+          actor_name?:  string | null;
+          entity_type?: string | null;
+          entity_id?:   string | null;
+          is_read?:     boolean;
+          created_at?:  string;
+        };
+        Update: {
+          is_read?: boolean;
+        };
+        Relationships: [];
+      };
+
       dashboard_stats_cache: {
         Row: {
           id: string;
@@ -285,6 +316,19 @@ export interface Database {
     };
 
     Functions: {
+      emit_notifications: {
+        Args: {
+          p_user_ids?:    string[] | null;
+          p_roles?:       string[] | null;
+          p_type:         string;
+          p_title:        string;
+          p_body:         string;
+          p_actor_name?:  string | null;
+          p_entity_type?: string | null;
+          p_entity_id?:   string | null;
+        };
+        Returns: void;
+      };
       get_next_serial_number: {
         Args: Record<never, never>;
         Returns: number;
@@ -330,7 +374,8 @@ export type MemberComment = Database['public']['Tables']['member_comments']['Row
 export type ActivityLog   = Database['public']['Tables']['activity_logs']['Row']
 export type ImportHistory = Database['public']['Tables']['import_history']['Row']
 export type SavedSearch   = Database['public']['Tables']['saved_searches']['Row']
-export type DashboardStat = Database['public']['Tables']['dashboard_stats_cache']['Row']
+export type DashboardStat   = Database['public']['Tables']['dashboard_stats_cache']['Row']
+export type Notification    = Database['public']['Tables']['notifications']['Row']
 
 export type MemberStatistics =
   Database["public"]["Views"]["member_statistics_view"]["Row"];

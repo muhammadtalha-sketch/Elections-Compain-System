@@ -58,7 +58,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export function MembersTable() {
   const { members, loading, error, refetch, remove } = useMembers();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
 
   const [search, setSearch] = useState("");
@@ -153,7 +153,7 @@ export function MembersTable() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
     try {
-      await remove(id);
+      await remove(id, name, profile?.full_name ?? null);
       toast.success(`${name} deleted successfully`);
       setSelectedIds((prev) => {
         const next = new Set(prev);

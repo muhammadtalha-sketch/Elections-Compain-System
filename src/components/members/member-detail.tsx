@@ -30,6 +30,7 @@ import { getMemberById, updateInterestStatus, FirestoreMember } from "@/services
 import {
   getComments, addComment, updateComment, deleteComment, CommentWithAuthor,
 } from "@/services/commentService";
+import { emitNotifications } from "@/services/notificationService";
 import type { InterestStatus } from "@/types/database.types";
 
 const INTEREST_BADGE: Record<InterestStatus, string> = {
@@ -164,7 +165,8 @@ function CommentItem({
 
 export function MemberDetail({ memberId }: { memberId: string }) {
   const router = useRouter();
-  const { user, role } = useAuth();
+  const { user, profile, role } = useAuth();
+  const actorName = profile?.full_name ?? user?.email ?? null;
 
   const [member,   setMember]   = useState<FirestoreMember | null>(null);
   const [comments, setComments] = useState<CommentWithAuthor[]>([]);
@@ -236,7 +238,10 @@ export function MemberDetail({ memberId }: { memberId: string }) {
     const prev = interest;
     setInterest(status);
     try {
-      await updateInterestStatus(memberId, status, user.id);
+      await updateInterestStatus(
+        memberId, status, user.id,
+        actorName, member?.name, member?.createdBy ?? null,
+      );
       toast.success(`Marked as ${status}`);
       setTimeline((tl) => [
         ...tl.filter((t) => t.type !== "interest"),
@@ -270,6 +275,20 @@ export function MemberDetail({ memberId }: { memberId: string }) {
         table_name:  "member_comments",
         record_id:   memberId,
         description: `Comment added on member ${member?.name}`,
+      });
+
+      // Notify roles + member creator (excluding actor)
+      const directIds: string[] = []
+      if (member?.createdBy && member.createdBy !== user.id) directIds.push(member.createdBy)
+      void emitNotifications({
+        userIds:    directIds,
+        roles:      ['Super Admin', 'Admin'],
+        type:       'comment_added',
+        title:      'New Comment Added',
+        body:       `${actorName ?? 'Someone'} commented on ${member?.name ?? 'a member'}`,
+        actorName,
+        entityType: 'member',
+        entityId:   memberId,
       });
     } catch (e) {
       toast.error((e as Error).message);

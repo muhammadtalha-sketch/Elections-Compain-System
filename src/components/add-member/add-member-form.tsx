@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { addMember, getNextSerialNumber, getDistinctAreas, getDistinctBars } from "@/services/memberService";
+import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 
 interface FormData {
@@ -41,6 +42,7 @@ interface SavedMember {
 
 export function AddMemberForm() {
   const today = new Date().toISOString().slice(0, 10);
+  const { profile } = useAuth();
 
   // form state
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormData>({
@@ -125,7 +127,7 @@ export function AddMemberForm() {
         registrationDate: data.registrationDate,
         status:           "Active",
         remarks:          data.remarks || "",
-      });
+      }, profile?.full_name ?? null);
 
       setSaved({
         id:           result.id,

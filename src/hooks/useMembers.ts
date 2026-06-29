@@ -16,9 +16,9 @@ interface UseMembersReturn {
   loading: boolean;
   error: string | null;
   refetch: () => void;
-  add: (member: Omit<FirestoreMember, "id" | "createdAt" | "updatedAt">) => Promise<{ id: string; serialNumber: number }>;
-  update: (id: string, updates: Partial<FirestoreMember>) => Promise<void>;
-  remove: (id: string) => Promise<void>;
+  add: (member: Omit<FirestoreMember, "id" | "createdAt" | "updatedAt">, actorName?: string | null) => Promise<{ id: string; serialNumber: number }>;
+  update: (id: string, updates: Partial<FirestoreMember>, actorName?: string | null) => Promise<void>;
+  remove: (id: string, memberName?: string | null, actorName?: string | null) => Promise<void>;
   search: (filters: MemberSearchFilters) => Promise<FirestoreMember[]>;
 }
 
@@ -45,8 +45,8 @@ export function useMembers(): UseMembersReturn {
   }, [fetch]);
 
   const add = useCallback(
-    async (member: Omit<FirestoreMember, "id" | "createdAt" | "updatedAt">) => {
-      const result = await addMember(member);
+    async (member: Omit<FirestoreMember, "id" | "createdAt" | "updatedAt">, actorName?: string | null) => {
+      const result = await addMember(member, actorName);
       await fetch();
       return result;
     },
@@ -54,16 +54,16 @@ export function useMembers(): UseMembersReturn {
   );
 
   const update = useCallback(
-    async (id: string, updates: Partial<FirestoreMember>) => {
-      await updateMember(id, updates);
+    async (id: string, updates: Partial<FirestoreMember>, actorName?: string | null) => {
+      await updateMember(id, updates, actorName);
       await fetch();
     },
     [fetch]
   );
 
   const remove = useCallback(
-    async (id: string) => {
-      await deleteMember(id);
+    async (id: string, memberName?: string | null, actorName?: string | null) => {
+      await deleteMember(id, memberName, actorName);
       setMembers((prev) => prev.filter((m) => m.id !== id));
     },
     []

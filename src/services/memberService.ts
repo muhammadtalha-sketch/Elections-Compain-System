@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Gender, InterestStatus, Member, MemberUpdate } from "@/types/database.types";
 import { resolveArea } from "@/lib/area-utils";
+import { emitNotifications } from "./notificationService";
 
 // ─── Public interface (camelCase, kept for backward compat with hooks/components) ─
 
@@ -25,6 +26,7 @@ export interface FirestoreMember {
   interestUpdatedAt?: string | null;
   remarks?: string | null;
   notes?: string | null;
+  createdBy?: string | null;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -68,6 +70,7 @@ function toMember(row: Member): FirestoreMember {
     interestUpdatedBy: row.interest_updated_by ?? null,
     interestUpdatedAt: row.interest_updated_at ?? null,
     remarks: row.remarks,
+    createdBy: row.created_by ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -118,6 +121,7 @@ export async function getNextSerialNumber(): Promise<number> {
 
 export async function addMember(
   member: Omit<FirestoreMember, "id" | "createdAt" | "updatedAt">,
+  actorName?: string | null,
 ): Promise<{ id: string; serialNumber: number }> {
   // Always use the database-generated serial — manual input is ignored
   const { data: nextSerial, error: serialError } = await supabase.rpc(
@@ -152,12 +156,24 @@ export async function addMember(
     .single();
 
   if (error) throw new Error(error.message);
+
+  void emitNotifications({
+    roles:      ['Super Admin', 'Admin'],
+    type:       'member_added',
+    title:      'New Member Added',
+    body:       `${member.name} was added to the system`,
+    actorName,
+    entityType: 'member',
+    entityId:   data.id,
+  });
+
   return { id: data.id, serialNumber: serial };
 }
 
 export async function updateMember(
   id: string,
   updates: Partial<FirestoreMember>,
+  actorName?: string | null,
 ): Promise<void> {
   const patch: MemberUpdate = {};
   if (updates.name !== undefined) patch.name = updates.name;
@@ -182,11 +198,35 @@ export async function updateMember(
 
   const { error } = await supabase.from("members").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
+
+  void emitNotifications({
+    roles:      ['Super Admin', 'Admin'],
+    type:       'member_updated',
+    title:      'Member Record Updated',
+    body:       `${updates.name ?? 'A member'}'s record was updated`,
+    actorName,
+    entityType: 'member',
+    entityId:   id,
+  });
 }
 
-export async function deleteMember(id: string): Promise<void> {
+export async function deleteMember(
+  id: string,
+  memberName?: string | null,
+  actorName?: string | null,
+): Promise<void> {
   const { error } = await supabase.from("members").delete().eq("id", id);
   if (error) throw new Error(error.message);
+
+  void emitNotifications({
+    roles:      ['Super Admin', 'Admin'],
+    type:       'member_deleted',
+    title:      'Member Deleted',
+    body:       `${memberName ?? 'A member'} was removed from the system`,
+    actorName,
+    entityType: 'member',
+    entityId:   id,
+  });
 }
 
 // ─── Search ──────────────────────────────────────────────────────────────────
@@ -230,6 +270,8 @@ export async function searchMembers(
 export async function bulkImportMembers(
   members: Omit<FirestoreMember, "id" | "createdAt" | "updatedAt">[],
   onProgress?: (done: number, total: number) => void,
+  actorUserId?: string | null,
+  actorName?: string | null,
 ): Promise<{ inserted: number; errors: string[] }> {
   const BATCH = 500;
   let inserted = 0;
@@ -267,6 +309,18 @@ export async function bulkImportMembers(
     onProgress?.(inserted, members.length);
   }
 
+  if (inserted > 0) {
+    void emitNotifications({
+      userIds:    actorUserId ? [actorUserId] : [],  // direct: actor's own completion
+      roles:      ['Super Admin', 'Admin'],           // roles: excludes actor if admin
+      type:       'import_completed',
+      title:      'Import Completed',
+      body:       `${inserted} member${inserted !== 1 ? 's' : ''} imported successfully`,
+      actorName,
+      entityType: 'import',
+    });
+  }
+
   return { inserted, errors };
 }
 
@@ -295,9 +349,12 @@ export async function getDistinctAreas(): Promise<string[]> {
 }
 
 export async function updateInterestStatus(
-  memberId: string,
-  status: InterestStatus,
-  updatedBy: string
+  memberId:   string,
+  status:     InterestStatus,
+  updatedBy:  string,
+  actorName?: string | null,
+  memberName?: string | null,
+  memberCreatedBy?: string | null,
 ): Promise<void> {
   const { error } = await supabase
     .from('members')
@@ -308,6 +365,21 @@ export async function updateInterestStatus(
     })
     .eq('id', memberId)
   if (error) throw new Error(error.message)
+
+  // Notify roles + member creator (if different from the actor)
+  const directIds: string[] = []
+  if (memberCreatedBy && memberCreatedBy !== updatedBy) directIds.push(memberCreatedBy)
+
+  void emitNotifications({
+    userIds:    directIds,
+    roles:      ['Super Admin', 'Admin'],
+    type:       'interest_changed',
+    title:      'Interest Status Updated',
+    body:       `${memberName ?? 'Member'} marked as "${status}"`,
+    actorName,
+    entityType: 'member',
+    entityId:   memberId,
+  });
 }
 
 export async function getDistinctBars(): Promise<string[]> {

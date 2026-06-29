@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Menu, Bell, Sun, Moon, Search, ChevronDown,
   User, LogOut, Settings, Shield,
+  UserPlus, PencilLine, Trash2, MessageSquare, ThumbsUp, Upload, CheckCheck,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -21,7 +22,9 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
+import { useNotifications } from "@/contexts/notification-context";
 import { initials, ROLE_BADGE } from "@/lib/rbac";
+import type { AppNotification } from "@/services/notificationService";
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   "/dashboard":             { title: "Dashboard",      subtitle: "Overview of your campaign data" },
@@ -36,12 +39,27 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   "/dashboard/profile":     { title: "My Profile",      subtitle: "Manage your account settings" },
 };
 
-const NOTIFICATIONS = [
-  { id: 1, title: "Import Completed",  desc: "45 members imported successfully",   time: "2m ago",  unread: true,  type: "success" },
-  { id: 2, title: "New Member Added",  desc: "SLK-0120 added by Fatima Zahra",    time: "15m ago", unread: true,  type: "info"    },
-  { id: 3, title: "Export Ready",      desc: "Hajipura area export is ready",       time: "1h ago",  unread: false, type: "info"    },
-  { id: 4, title: "Low Storage",       desc: "Database at 78% capacity",            time: "3h ago",  unread: false, type: "warning" },
-];
+type NotifMeta = { icon: React.ElementType; dot: string }
+
+const NOTIF_META: Record<string, NotifMeta> = {
+  member_added:     { icon: UserPlus,      dot: "bg-green-500"  },
+  member_updated:   { icon: PencilLine,    dot: "bg-blue-500"   },
+  member_deleted:   { icon: Trash2,        dot: "bg-red-500"    },
+  comment_added:    { icon: MessageSquare, dot: "bg-violet-500" },
+  interest_changed: { icon: ThumbsUp,      dot: "bg-amber-500"  },
+  import_completed: { icon: Upload,        dot: "bg-teal-500"   },
+  user_created:     { icon: UserPlus,      dot: "bg-primary"    },
+}
+
+const DEFAULT_META: NotifMeta = { icon: Bell, dot: "bg-muted-foreground" }
+
+function timeAgo(iso: string): string {
+  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (secs < 60)   return "just now"
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
+  if (secs < 86400)return `${Math.floor(secs / 3600)}h ago`
+  return `${Math.floor(secs / 86400)}d ago`
+}
 
 interface TopNavbarProps { onMenuToggle: () => void }
 
@@ -53,8 +71,9 @@ export function TopNavbar({ onMenuToggle }: TopNavbarProps) {
   const [searchValue, setSearchValue] = useState("");
   const [signingOut,  setSigningOut]  = useState(false);
 
+  const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
+
   const pageInfo     = PAGE_TITLES[pathname] ?? { title: "Dashboard", subtitle: "" };
-  const unreadCount  = NOTIFICATIONS.filter(n => n.unread).length;
   const displayName  = profile?.full_name ?? user?.email?.split("@")[0] ?? "User";
   const displayEmail = user?.email ?? "";
   const avatarUrl    = profile?.avatar_url ?? null;
@@ -114,36 +133,70 @@ export function TopNavbar({ onMenuToggle }: TopNavbarProps) {
         </PopoverTrigger>
         <PopoverContent className="w-80 p-0" align="end">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="font-semibold text-sm">Notifications</h3>
-            <Badge variant="secondary" className="text-xs">{unreadCount} new</Badge>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm">Notifications</h3>
+              {unreadCount > 0 && (
+                <Badge variant="secondary" className="text-xs">{unreadCount} new</Badge>
+              )}
+            </div>
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllRead()}
+                className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+              >
+                <CheckCheck className="w-3 h-3" /> Mark all read
+              </button>
+            )}
           </div>
-          <div className="divide-y divide-border">
-            {NOTIFICATIONS.map((notif) => (
-              <div key={notif.id} className={cn(
-                "px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors",
-                notif.unread && "bg-primary/5"
-              )}>
-                <div className="flex items-start gap-2">
-                  <div className={cn(
-                    "w-2 h-2 rounded-full mt-1.5 flex-shrink-0",
-                    notif.type === "success" && "bg-green-500",
-                    notif.type === "warning" && "bg-amber-500",
-                    notif.type === "info"    && "bg-primary",
-                  )} />
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">{notif.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{notif.desc}</p>
-                    <p className="text-[10px] text-muted-foreground/70 mt-1">{notif.time}</p>
-                  </div>
-                </div>
+
+          <div className="divide-y divide-border max-h-80 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
+                <Bell className="w-8 h-8 opacity-20" />
+                <p className="text-xs font-medium">No notifications yet</p>
               </div>
-            ))}
+            ) : (
+              notifications.map((n: AppNotification) => {
+                const meta = NOTIF_META[n.type] ?? DEFAULT_META
+                const Icon = meta.icon
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => { if (!n.isRead) markRead(n.id) }}
+                    className={cn(
+                      "w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors",
+                      !n.isRead && "bg-primary/5"
+                    )}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5",
+                        n.isRead ? "bg-muted" : `${meta.dot} bg-opacity-15`
+                      )}>
+                        <Icon className={cn("w-3.5 h-3.5", n.isRead ? "text-muted-foreground" : "text-foreground")} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          {!n.isRead && <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", meta.dot)} />}
+                          <p className="text-xs font-semibold text-foreground truncate">{n.title}</p>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(n.createdAt)}</p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })
+            )}
           </div>
-          <div className="px-4 py-2 border-t border-border">
-            <Button variant="ghost" size="sm" className="w-full text-xs text-primary h-7">
-              View all notifications
-            </Button>
-          </div>
+
+          {notifications.length > 0 && (
+            <div className="px-4 py-2 border-t border-border">
+              <p className="text-[10px] text-center text-muted-foreground/60">
+                Showing last {notifications.length} notification{notifications.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          )}
         </PopoverContent>
       </Popover>
 
