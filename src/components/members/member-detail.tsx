@@ -23,10 +23,15 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/auth-context";
-import { initials, ROLE_BADGE } from "@/lib/rbac";
+import { can, initials, ROLE_BADGE } from "@/lib/rbac";
 import { getMemberById, updateInterestStatus, updateMember, getAdjacentMemberIds, FirestoreMember } from "@/services/memberService";
 import { PhotoUpload } from "./photo-upload";
 import {
@@ -165,10 +170,45 @@ function CommentItem({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
+interface EditForm {
+  name:             string;
+  fatherName:       string;
+  gender:           "Male" | "Female" | "Other";
+  registrationDate: string;
+  birthYear:        string;
+  address:          string;
+  area:             string;
+  city:             string;
+  phoneNumber:      string;
+  requestMemberBar: string;
+  dob:              string;
+  remarks:          string;
+  photoUrl:         string;
+}
+
+function toEditForm(m: FirestoreMember): EditForm {
+  return {
+    name:             m.name ?? "",
+    fatherName:       m.fatherName ?? "",
+    gender:           m.gender ?? "Male",
+    registrationDate: m.registrationDate ?? "",
+    birthYear:        m.birthYear ? String(m.birthYear) : "",
+    address:          m.address ?? "",
+    area:             m.area ?? "",
+    city:             m.city ?? "",
+    phoneNumber:      m.phoneNumber ?? "",
+    requestMemberBar: m.requestMemberBar ?? "",
+    dob:              m.dob ?? "",
+    remarks:          m.remarks ?? "",
+    photoUrl:         m.photoUrl ?? "",
+  };
+}
+
 export function MemberDetail({ memberId }: { memberId: string }) {
   const router = useRouter();
   const { user, profile, role } = useAuth();
   const actorName = profile?.full_name ?? user?.email ?? null;
+  const canEdit = can(role, "editMembers");
 
   const [member,   setMember]   = useState<FirestoreMember | null>(null);
   const [comments, setComments] = useState<CommentWithAuthor[]>([]);
@@ -182,6 +222,10 @@ export function MemberDetail({ memberId }: { memberId: string }) {
   const [editingPhoto, setEditingPhoto] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<string | null | undefined>(undefined);
   const [savingPhoto, setSavingPhoto] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<EditForm | null>(null);
+  const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [adjNav, setAdjNav] = useState<{ prevId: string | null; nextId: string | null }>({ prevId: null, nextId: null });
 
   const buildTimeline = useCallback((m: FirestoreMember, cmts: CommentWithAuthor[]): TimelineItem[] => {
@@ -344,7 +388,7 @@ export function MemberDetail({ memberId }: { memberId: string }) {
     if (pendingPhoto === undefined || !member) return;
     setSavingPhoto(true);
     try {
-      await updateMember(memberId, { photoUrl: pendingPhoto }, actorName);
+      await updateMember(memberId, { photoUrl: pendingPhoto }, actorName, user?.id);
       setMember((m) => m ? { ...m, photoUrl: pendingPhoto } : m);
       setEditingPhoto(false);
       setPendingPhoto(undefined);
@@ -353,6 +397,63 @@ export function MemberDetail({ memberId }: { memberId: string }) {
       toast.error("Failed to save photo");
     } finally {
       setSavingPhoto(false);
+    }
+  };
+
+  const handleStartEdit = () => {
+    if (!member) return;
+    setForm(toEditForm(member));
+    setFormError("");
+    setEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditing(false);
+    setForm(null);
+    setFormError("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!form || !member) return;
+
+    if (!form.name.trim()) { setFormError("Name is required."); return; }
+    if (form.birthYear && !/^\d{4}$/.test(form.birthYear)) {
+      setFormError("Birth year must be a 4-digit year."); return;
+    }
+    if (form.dob && isNaN(new Date(form.dob).getTime())) {
+      setFormError("Date of birth is invalid."); return;
+    }
+    if (form.registrationDate && isNaN(new Date(form.registrationDate).getTime())) {
+      setFormError("Registration date is invalid."); return;
+    }
+
+    setFormError("");
+    setSaving(true);
+    try {
+      const updates = {
+        name:             form.name.trim(),
+        fatherName:       form.fatherName.trim(),
+        gender:           form.gender,
+        registrationDate: form.registrationDate,
+        birthYear:        form.birthYear ? parseInt(form.birthYear, 10) : 0,
+        address:          form.address.trim(),
+        area:             form.area.trim(),
+        city:             form.city.trim() || "Sialkot",
+        phoneNumber:      form.phoneNumber.trim(),
+        requestMemberBar: form.requestMemberBar.trim(),
+        dob:              form.dob,
+        remarks:          form.remarks.trim() || null,
+        photoUrl:         form.photoUrl.trim() || null,
+      };
+      await updateMember(memberId, updates, actorName, user?.id);
+      setMember((m) => m ? { ...m, ...updates } : m);
+      setEditing(false);
+      setForm(null);
+      toast.success("Member profile updated");
+    } catch (e) {
+      toast.error((e as Error).message ?? "Failed to update member");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -447,15 +548,51 @@ export function MemberDetail({ memberId }: { memberId: string }) {
                 )}
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-xl font-bold text-foreground">{member.name}</h1>
-                    <Badge variant="outline" className={cn("text-xs border font-semibold", INTEREST_BADGE[interest])}>
-                      {interest}
-                    </Badge>
+                  <div className="flex items-center gap-3 flex-wrap justify-between">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {editing && form ? (
+                        <Input
+                          value={form.name}
+                          onChange={(e) => setForm((f) => f && { ...f, name: e.target.value })}
+                          className="h-8 text-base font-bold w-56"
+                          placeholder="Name"
+                        />
+                      ) : (
+                        <h1 className="text-xl font-bold text-foreground">{member.name}</h1>
+                      )}
+                      <Badge variant="outline" className={cn("text-xs border font-semibold", INTEREST_BADGE[interest])}>
+                        {interest}
+                      </Badge>
+                    </div>
+                    {canEdit && !editing && (
+                      <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={handleStartEdit}>
+                        <Pencil className="w-3.5 h-3.5" /> Edit
+                      </Button>
+                    )}
+                    {editing && (
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="ghost" className="h-8" onClick={handleCancelEdit} disabled={saving}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" className="gap-1.5 h-8" onClick={handleSaveEdit} disabled={saving}>
+                          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          Save Changes
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {member.fatherName ? `S/O ${member.fatherName}` : ""}
-                  </p>
+                  {editing && form ? (
+                    <Input
+                      value={form.fatherName}
+                      onChange={(e) => setForm((f) => f && { ...f, fatherName: e.target.value })}
+                      className="h-7 text-sm mt-1 max-w-xs"
+                      placeholder="Father Name"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {member.fatherName ? `S/O ${member.fatherName}` : ""}
+                    </p>
+                  )}
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     <span className="text-xs font-mono text-primary font-semibold">#{member.serialNumber}</span>
                     <Badge variant="outline" className={cn(
@@ -510,44 +647,109 @@ export function MemberDetail({ memberId }: { memberId: string }) {
                 </button>
               </div>
 
-              {/* Details grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-5 border-t border-border">
-                {([
-                  { icon: User,     label: "Gender",       value: member.gender || "—" },
-                  { icon: Calendar, label: "Date of Birth", value: member.dob || "—" },
-                  { icon: Hash,     label: "Age",          value: age !== null ? `${age} years` : "—" },
-                  { icon: MapPin,   label: "Area",         value: member.area || "—" },
-                  { icon: Phone,    label: "Phone",        value: member.phoneNumber || "—" },
-                  { icon: Calendar, label: "Reg. Date",    value: member.registrationDate || "—" },
-                  { icon: Users,    label: "Member Bar",   value: member.requestMemberBar || "—" },
-                  { icon: Clock,    label: "Created",      value: member.createdAt ? new Date(String(member.createdAt)).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : "—" },
-                  { icon: Activity, label: "Updated",      value: member.updatedAt ? new Date(String(member.updatedAt)).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : "—" },
-                ] as { icon: React.ElementType; label: string; value: string }[]).map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                      <Icon className="w-3 h-3" /> {label}
+              {editing && form ? (
+                <div className="mt-6 pt-5 border-t border-border space-y-4">
+                  {formError && (
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" /> {formError}
                     </div>
-                    <p className="text-sm font-medium text-foreground">{value}</p>
+                  )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">Gender</Label>
+                      <Select value={form.gender} onValueChange={(v) => setForm((f) => f && { ...f, gender: v as EditForm["gender"] })}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">Date of Birth</Label>
+                      <Input type="date" value={form.dob} onChange={(e) => setForm((f) => f && { ...f, dob: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">Birth Year</Label>
+                      <Input value={form.birthYear} onChange={(e) => setForm((f) => f && { ...f, birthYear: e.target.value })} className="h-9 text-sm" placeholder="YYYY" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">Area</Label>
+                      <Input value={form.area} onChange={(e) => setForm((f) => f && { ...f, area: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">City</Label>
+                      <Input value={form.city} onChange={(e) => setForm((f) => f && { ...f, city: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">Phone</Label>
+                      <Input value={form.phoneNumber} onChange={(e) => setForm((f) => f && { ...f, phoneNumber: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">Reg. Date</Label>
+                      <Input type="date" value={form.registrationDate} onChange={(e) => setForm((f) => f && { ...f, registrationDate: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">Member Bar</Label>
+                      <Input value={form.requestMemberBar} onChange={(e) => setForm((f) => f && { ...f, requestMemberBar: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">Photo URL</Label>
+                      <Input value={form.photoUrl} onChange={(e) => setForm((f) => f && { ...f, photoUrl: e.target.value })} className="h-9 text-sm" placeholder="https://…" />
+                    </div>
                   </div>
-                ))}
-              </div>
-
-              {member.address && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> Address
-                  </p>
-                  <p className="text-sm text-foreground">{member.address}</p>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase text-muted-foreground">Address</Label>
+                    <Textarea value={form.address} onChange={(e) => setForm((f) => f && { ...f, address: e.target.value })} rows={2} className="text-sm resize-none" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase text-muted-foreground">Remarks</Label>
+                    <Textarea value={form.remarks} onChange={(e) => setForm((f) => f && { ...f, remarks: e.target.value })} rows={2} className="text-sm resize-none" />
+                  </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Details grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-5 border-t border-border">
+                    {([
+                      { icon: User,     label: "Gender",       value: member.gender || "—" },
+                      { icon: Calendar, label: "Date of Birth", value: member.dob || "—" },
+                      { icon: Hash,     label: "Age",          value: age !== null ? `${age} years` : "—" },
+                      { icon: MapPin,   label: "Area",         value: member.area || "—" },
+                      { icon: Phone,    label: "Phone",        value: member.phoneNumber || "—" },
+                      { icon: Calendar, label: "Reg. Date",    value: member.registrationDate || "—" },
+                      { icon: Users,    label: "Member Bar",   value: member.requestMemberBar || "—" },
+                      { icon: Clock,    label: "Created",      value: member.createdAt ? new Date(String(member.createdAt)).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : "—" },
+                      { icon: Activity, label: "Updated",      value: member.updatedAt ? new Date(String(member.updatedAt)).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : "—" },
+                    ] as { icon: React.ElementType; label: string; value: string }[]).map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          <Icon className="w-3 h-3" /> {label}
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{value}</p>
+                      </div>
+                    ))}
+                  </div>
 
-              {(member.remarks || member.notes) && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" /> Notes / Remarks
-                  </p>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{member.notes || member.remarks}</p>
-                </div>
+                  {member.address && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> Address
+                      </p>
+                      <p className="text-sm text-foreground">{member.address}</p>
+                    </div>
+                  )}
+
+                  {(member.remarks || member.notes) && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3" /> Notes / Remarks
+                      </p>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">{member.notes || member.remarks}</p>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* ── Edit Photo ── */}

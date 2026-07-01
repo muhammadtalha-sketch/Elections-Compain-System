@@ -45,6 +45,7 @@ next-env.d.ts
 
 # Lawyer Import Files
 Lawyer_Photos/
+Lawyers_Data/
 insert_members.sql
 
 # CSV Data

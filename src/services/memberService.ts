@@ -10,7 +10,7 @@ export interface FirestoreMember {
   serialNumber: string;
   name: string;
   fatherName: string;
-  gender: "Male" | "Female";
+  gender: "Male" | "Female" | "Other";
   dob: string;
   birthYear: number;
   address: string;
@@ -55,7 +55,9 @@ function toMember(row: Member): FirestoreMember {
     name: row.name,
     fatherName: row.father_name ?? "",
     gender:
-      row.gender === "Male" || row.gender === "Female" ? row.gender : "Male",
+      row.gender === "Male" || row.gender === "Female" || row.gender === "Other"
+        ? row.gender
+        : "Male",
     dob: row.dob ?? "",
     birthYear: row.birth_year ?? 0,
     address: row.address ?? "",
@@ -174,6 +176,7 @@ export async function updateMember(
   id: string,
   updates: Partial<FirestoreMember>,
   actorName?: string | null,
+  actorId?: string | null,
 ): Promise<void> {
   const patch: MemberUpdate = {};
   if (updates.name !== undefined) patch.name = updates.name;
@@ -195,6 +198,10 @@ export async function updateMember(
     patch.registration_date = updates.registrationDate;
   if (updates.photoUrl !== undefined)
     (patch as any).photo_url = updates.photoUrl || null;
+  if (updates.remarks !== undefined) patch.remarks = updates.remarks || null;
+  if (updates.interestStatus !== undefined)
+    patch.interest_status = updates.interestStatus;
+  if (actorId) patch.updated_by = actorId;
 
   const { error } = await supabase.from("members").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
