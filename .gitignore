@@ -42,3 +42,16 @@ next-env.d.ts
 
 # MCP config contains bearer tokens — never commit
 .mcp.json
+
+# Lawyer Import Files
+Lawyer_Photos/
+insert_members.sql
+
+# CSV Data
+Sialkot Lawyer Details - 2100-2400.csv
+Sialkot Lawyer Details - 2423-2599.csv
+Sialkot Lawyer Details - 2600-2700.csv
+Sialkot Lawyer Details - 2701-2839.csv
+
+# Supabase Migrations
+supabase/migrations/
