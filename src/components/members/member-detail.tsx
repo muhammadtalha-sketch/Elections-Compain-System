@@ -415,11 +415,28 @@ export function MemberDetail({ memberId }: { memberId: string }) {
               <div className="flex items-start gap-5">
                 {/* Photo or initials avatar */}
                 {member.photoUrl ? (
-                  <img
-                    src={member.photoUrl}
-                    alt={member.name}
-                    className="w-20 h-20 rounded-2xl object-cover border border-border shadow-md flex-shrink-0"
-                  />
+                  <div className="relative w-20 h-20 flex-shrink-0">
+                    <img
+                      src={member.photoUrl}
+                      alt={member.name}
+                      className="w-20 h-20 rounded-2xl object-cover border border-border shadow-md"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        const fb = e.currentTarget.nextElementSibling as HTMLElement | null;
+                        if (fb) fb.style.display = "flex";
+                      }}
+                    />
+                    <div
+                      style={{ display: "none" }}
+                      className={cn(
+                        "w-20 h-20 rounded-2xl absolute inset-0 items-center justify-center text-white text-2xl font-bold shadow-md",
+                        member.gender === "Male" ? "bg-gradient-to-br from-blue-400 to-blue-600" : "bg-gradient-to-br from-pink-400 to-pink-600"
+                      )}
+                    >
+                      {member.name.charAt(0).toUpperCase()}
+                    </div>
+                  </div>
                 ) : (
                   <div className={cn(
                     "w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-md",

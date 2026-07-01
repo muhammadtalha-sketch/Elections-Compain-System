@@ -103,12 +103,30 @@ export function RecentRegistrations() {
             >
               {/* Avatar: photo or initials fallback */}
               {member.photoUrl ? (
-                <img
-                  src={member.photoUrl}
-                  alt={member.name}
-                  className="w-8 h-8 rounded-xl object-cover flex-shrink-0 border border-border"
-                  loading="lazy"
-                />
+                <div className="relative w-8 h-8 flex-shrink-0">
+                  <img
+                    src={member.photoUrl}
+                    alt={member.name}
+                    className="w-8 h-8 rounded-xl object-cover border border-border"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const fb = e.currentTarget.nextElementSibling as HTMLElement | null;
+                      if (fb) fb.style.display = "flex";
+                    }}
+                  />
+                  <div
+                    style={{ display: "none" }}
+                    className={cn(
+                      "w-8 h-8 rounded-xl absolute inset-0 items-center justify-center text-white text-xs font-bold",
+                      member.gender === "Male"
+                        ? "bg-gradient-to-br from-blue-500 to-blue-600"
+                        : "bg-gradient-to-br from-pink-500 to-pink-600"
+                    )}
+                  >
+                    {member.name.charAt(0).toUpperCase()}
+                  </div>
+                </div>
               ) : (
                 <div className={cn(
                   "w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0",

@@ -432,12 +432,28 @@ export function MembersTable() {
                   {visibleColumns.photoUrl && (
                     <td className="px-3 py-2.5">
                       {member.photoUrl ? (
-                        <img
-                          src={member.photoUrl}
-                          alt={member.name}
-                          className="w-10 h-10 rounded-full object-cover border border-border"
-                          loading="lazy"
-                        />
+                        <div className="relative w-10 h-10 flex-shrink-0">
+                          <img
+                            src={member.photoUrl}
+                            alt={member.name}
+                            className="w-10 h-10 rounded-full object-cover border border-border"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              const fb = e.currentTarget.nextElementSibling as HTMLElement | null;
+                              if (fb) fb.style.display = "flex";
+                            }}
+                          />
+                          <div
+                            style={{ display: "none" }}
+                            className={cn(
+                              "w-10 h-10 rounded-full absolute inset-0 items-center justify-center text-white text-xs font-bold",
+                              member.gender === "Male" ? "bg-blue-500" : "bg-pink-500",
+                            )}
+                          >
+                            {member.name?.charAt(0)}
+                          </div>
+                        </div>
                       ) : (
                         <div
                           className={cn(

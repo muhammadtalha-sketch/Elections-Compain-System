@@ -25,6 +25,7 @@ export type DbField =
   | "phone_number"
   | "request_member_bar"
   | "registration_date"
+  | "photo_url"
   | "remarks"
   | "__skip__";
 
@@ -41,6 +42,7 @@ export const DB_FIELD_LABELS: Record<DbField, string> = {
   phone_number:         "Phone Number",
   request_member_bar:   "Member Bar",
   registration_date:    "Registration Date",
+  photo_url:            "Photo URL",
   remarks:              "Remarks / Notes",
   __skip__:             "— Skip this column —",
 };
@@ -51,7 +53,7 @@ export const DB_FIELDS_ORDERED: DbField[] = [
   "gender", "dob", "birth_year",
   "address", "area", "city",
   "phone_number", "request_member_bar",
-  "registration_date", "remarks",
+  "registration_date", "photo_url", "remarks",
 ];
 
 export interface ParsedFile {
@@ -172,6 +174,8 @@ const AUTO_MAP_RULES: [RegExp, DbField][] = [
   [/bar|bench|member.?bar|request.?bar/i, "request_member_bar"],
   // Registration Date
   [/^(date|reg.?date|registration.?date|joining.?date|enroll.?date|dated?)$/i, "registration_date"],
+  // Photo URL
+  [/^(photo[_\-.]?url|image[_\-.]?url|avatar[_\-.]?url|photo|image)$/i, "photo_url"],
   // Remarks
   [/^(remarks?|notes?|comments?)$/i, "remarks"],
 ];
@@ -303,6 +307,11 @@ export function validateRows(
       warnings.push("Phone number looks short");
     }
 
+    const photoUrl = getMapped(raw, mapping, "photo_url");
+    if (photoUrl && !/^https?:\/\/.+/i.test(photoUrl)) {
+      warnings.push(`Invalid photo URL format: "${photoUrl}"`);
+    }
+
     return {
       rowIndex:        i + 2,  // row 1 = header, so data starts at row 2
       raw,
@@ -410,6 +419,7 @@ function buildDbRow(
     phone_number:       phone,
     request_member_bar: get("request_member_bar").trim() || null,
     registration_date:  regDate,
+    photo_url:          get("photo_url").trim() || null,
     remarks:            get("remarks").trim() || null,
   };
 }
