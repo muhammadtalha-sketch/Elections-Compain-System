@@ -114,7 +114,10 @@ export function MembersTable() {
       data.sort((a, b) => {
         const aVal = a[sortKey] ?? "";
         const bVal = b[sortKey] ?? "";
-        const cmp = String(aVal).localeCompare(String(bVal));
+        const aNum = Number(aVal);
+        const bNum = Number(bVal);
+        const bothNumeric = aVal !== "" && bVal !== "" && !Number.isNaN(aNum) && !Number.isNaN(bNum);
+        const cmp = bothNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal));
         return sortDir === "asc" ? cmp : -cmp;
       });
     }
