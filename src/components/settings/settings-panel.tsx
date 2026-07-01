@@ -3,8 +3,8 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  User, Bell, Palette, Shield, Save, Camera,
-  Monitor, Sun, Moon, Mail, MessageSquare, Smartphone,
+  User, Bell, Languages, Shield, Save, Camera,
+  Mail, MessageSquare, Smartphone,
   Eye, EyeOff, AlertCircle, LogOut, Loader2, Check,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,7 +17,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { useTheme } from "next-themes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -130,7 +129,6 @@ function SecurityContent() {
 }
 
 export function SettingsPanel() {
-  const { theme, setTheme } = useTheme();
   const { user, profile, role, refreshProfile } = useAuth();
 
   // Profile form — seeded from auth context
@@ -195,7 +193,7 @@ export function SettingsPanel() {
       <TabsList className="h-9 mb-5 bg-muted/60">
         <TabsTrigger value="profile" className="text-xs gap-1.5"><User className="w-3 h-3" />Profile</TabsTrigger>
         <TabsTrigger value="notifications" className="text-xs gap-1.5"><Bell className="w-3 h-3" />Notifications</TabsTrigger>
-        <TabsTrigger value="theme" className="text-xs gap-1.5"><Palette className="w-3 h-3" />Theme</TabsTrigger>
+        <TabsTrigger value="language" className="text-xs gap-1.5"><Languages className="w-3 h-3" />Language</TabsTrigger>
         <TabsTrigger value="security" className="text-xs gap-1.5"><Shield className="w-3 h-3" />Security</TabsTrigger>
       </TabsList>
 
@@ -355,46 +353,19 @@ export function SettingsPanel() {
         </motion.div>
       </TabsContent>
 
-      {/* Theme */}
-      <TabsContent value="theme">
+      {/* Language */}
+      <TabsContent value="language">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
         >
           <div className="px-6 py-4 border-b border-border bg-muted/20">
-            <h3 className="font-semibold text-sm">Theme Settings</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Customize your visual experience</p>
+            <h3 className="font-semibold text-sm">Language Settings</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Customize your language preference</p>
           </div>
 
           <div className="p-6">
-            <p className="text-xs font-semibold text-foreground mb-3">Appearance</p>
-            <div className="grid grid-cols-3 gap-3 max-w-sm">
-              {[
-                { value: "light", icon: Sun, label: "Light" },
-                { value: "dark", icon: Moon, label: "Dark" },
-                { value: "system", icon: Monitor, label: "System" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setTheme(opt.value)}
-                  className={cn(
-                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                    theme === opt.value
-                      ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                      : "border-border hover:border-primary/30 hover:bg-muted/30"
-                  )}
-                >
-                  <opt.icon className={cn("w-5 h-5", theme === opt.value ? "text-primary" : "text-muted-foreground")} />
-                  <span className={cn("text-xs font-semibold", theme === opt.value ? "text-primary" : "text-muted-foreground")}>
-                    {opt.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <Separator className="my-5" />
-
             <div className="max-w-sm">
               <p className="text-xs font-semibold text-foreground mb-3">Language</p>
               <Select defaultValue="en">

@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Menu, Bell, Sun, Moon, Search, ChevronDown,
+  Menu, Bell, Search, ChevronDown,
   User, LogOut, Settings, Shield,
   UserPlus, PencilLine, Trash2, MessageSquare, ThumbsUp, Upload, CheckCheck,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +65,6 @@ interface TopNavbarProps { onMenuToggle: () => void }
 export function TopNavbar({ onMenuToggle }: TopNavbarProps) {
   const pathname   = usePathname();
   const router     = useRouter();
-  const { theme, setTheme } = useTheme();
   const { user, profile, role, signOut } = useAuth();
   const [searchValue, setSearchValue] = useState("");
   const [signingOut,  setSigningOut]  = useState(false);
@@ -109,17 +107,6 @@ export function TopNavbar({ onMenuToggle }: TopNavbarProps) {
           />
         </div>
       </div>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-lg"
-        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      >
-        <Sun className="w-4 h-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-        <Moon className="absolute w-4 h-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        <span className="sr-only">Toggle theme</span>
-      </Button>
 
       {/* Notifications */}
       <Popover>

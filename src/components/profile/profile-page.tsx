@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Camera, Check, Eye, EyeOff, AlertCircle, Shield,
-  Sun, Moon, Monitor, LogOut, Loader2,
+  LogOut, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/auth-context";
 import { initials, ROLE_BADGE } from "@/lib/rbac";
-import { useTheme } from "next-themes";
 
 // ─── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -307,50 +306,6 @@ function NotificationsSection() {
   );
 }
 
-// ─── Theme Settings ────────────────────────────────────────────────────────────
-
-function ThemeSection() {
-  const { theme, setTheme } = useTheme();
-
-  const options = [
-    { value: "light",  label: "Light",          icon: Sun     },
-    { value: "dark",   label: "Dark",           icon: Moon    },
-    { value: "system", label: "System Default", icon: Monitor },
-  ] as const;
-
-  return (
-    <Card title="Theme Settings" description="Choose your preferred appearance.">
-      <div className="grid grid-cols-3 gap-3">
-        {options.map(({ value, label, icon: Icon }) => (
-          <button
-            key={value}
-            onClick={() => setTheme(value)}
-            className={cn(
-              "flex flex-col items-center gap-2.5 p-4 rounded-xl border-2 transition-all",
-              theme === value
-                ? "border-primary bg-primary/5 shadow-sm"
-                : "border-border hover:border-primary/40 hover:bg-muted/50"
-            )}
-          >
-            <div className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center",
-              theme === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-            )}>
-              <Icon className="w-5 h-5" />
-            </div>
-            <span className={cn(
-              "text-xs font-semibold",
-              theme === value ? "text-primary" : "text-muted-foreground"
-            )}>
-              {label}
-            </span>
-          </button>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
 // ─── Logout ────────────────────────────────────────────────────────────────────
 
 function LogoutSection() {
@@ -413,7 +368,6 @@ export function ProfilePage() {
       <PersonalInfoSection key={profile?.updated_at} />
       <SecuritySection />
       <NotificationsSection />
-      <ThemeSection />
       <LogoutSection />
     </div>
   );
