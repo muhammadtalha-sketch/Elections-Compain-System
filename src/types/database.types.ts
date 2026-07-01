@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type UserRole       = 'Super Admin' | 'Admin' | 'User'
+export type UserRole       = 'Super Admin' | 'Admin'
 export type Gender         = 'Male' | 'Female' | 'Other'
 export type ImportStatus   = 'Processing' | 'Completed' | 'Failed'
 export type InterestStatus = 'Interested' | 'Not Interested' | 'Pending'
@@ -35,6 +35,7 @@ export interface Database {
           role: UserRole;
           avatar_url: string | null;
           is_active: boolean;
+          must_change_password: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -46,6 +47,7 @@ export interface Database {
           role?: UserRole;
           avatar_url?: string | null;
           is_active?: boolean;
+          must_change_password?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -56,6 +58,7 @@ export interface Database {
           role?: UserRole;
           avatar_url?: string | null;
           is_active?: boolean;
+          must_change_password?: boolean;
           updated_at?: string;
         };
         Relationships: [];

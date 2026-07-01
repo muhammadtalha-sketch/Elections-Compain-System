@@ -14,28 +14,33 @@ export function isSuperAdmin(email: string | null | undefined): boolean {
 
 const PERMISSIONS: Record<string, UserRole[]> = {
   // Members
-  viewMembers:      ['Super Admin', 'Admin', 'User'],
+  viewMembers:      ['Super Admin', 'Admin'],
   addMembers:       ['Super Admin', 'Admin'],
   editMembers:      ['Super Admin', 'Admin'],
   deleteMembers:    ['Super Admin', 'Admin'],
 
   // Data
   importData:       ['Super Admin', 'Admin'],
-  exportData:       ['Super Admin', 'Admin', 'User'],
+  exportData:       ['Super Admin', 'Admin'],
 
   // Analytics — all roles
-  viewAnalytics:    ['Super Admin', 'Admin', 'User'],
+  viewAnalytics:    ['Super Admin', 'Admin'],
 
-  // Users — all roles can VIEW the users list; only Admin+ can manage
-  viewUsers:        ['Super Admin', 'Admin', 'User'],
-  manageUsers:      ['Super Admin', 'Admin'],
+  // System user accounts — Super Admin only (create/edit/deactivate/delete/
+  // reset-password/change-role). Admin has no access to this area at all.
+  viewUsers:        ['Super Admin'],
+  manageUsers:      ['Super Admin'],
+  createUsers:      ['Super Admin'],
+  deleteUsers:      ['Super Admin'],
+  resetPasswords:   ['Super Admin'],
+  changeRoles:      ['Super Admin'],
 
   // Logs
   viewActivityLogs: ['Super Admin', 'Admin'],
 
   // Settings — all roles manage their OWN settings (password, avatar, name, etc.)
   // System-wide settings are enforced inside the settings panel itself, not here.
-  manageSettings:   ['Super Admin', 'Admin', 'User'],
+  manageSettings:   ['Super Admin', 'Admin'],
 }
 
 export type Permission = keyof typeof PERMISSIONS
@@ -50,10 +55,10 @@ export function can(role: UserRole | null | undefined, permission: Permission): 
 export const ROLE_BADGE: Record<UserRole, string> = {
   'Super Admin': 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
   'Admin':       'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400',
-  'User':        'bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-400',
 }
 
-export const ASSIGNABLE_ROLES: UserRole[] = ['Admin', 'User']
+// Only Super Admin creates users, and may assign either role.
+export const ASSIGNABLE_ROLES: UserRole[] = ['Admin', 'Super Admin']
 
 export function initials(name: string | null | undefined): string {
   if (!name) return '?'

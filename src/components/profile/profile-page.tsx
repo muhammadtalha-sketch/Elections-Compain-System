@@ -197,6 +197,7 @@ function PersonalInfoSection() {
 // ─── Change Password ───────────────────────────────────────────────────────────
 
 function SecuritySection() {
+  const { user, refreshProfile } = useAuth();
   const [form,   setForm]   = useState({ current: "", next: "", confirm: "" });
   const [show,   setShow]   = useState({ current: false, next: false, confirm: false });
   const [saving, setSaving] = useState(false);
@@ -213,6 +214,8 @@ function SecuritySection() {
     if (err) {
       setError(err.message);
     } else {
+      if (user) await supabase.from("profiles").update({ must_change_password: false }).eq("id", user.id);
+      await refreshProfile();
       toast.success("Password changed successfully");
       setForm({ current: "", next: "", confirm: "" });
     }

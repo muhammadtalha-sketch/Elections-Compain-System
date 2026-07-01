@@ -24,7 +24,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { initials, ROLE_BADGE } from "@/lib/rbac";
 
 function SecurityContent() {
-  const { signOut } = useAuth();
+  const { user, signOut, refreshProfile } = useAuth();
   const [form,    setForm]    = useState({ next: "", confirm: "" });
   const [show,    setShow]    = useState({ next: false, confirm: false });
   const [saving,  setSaving]  = useState(false);
@@ -43,6 +43,8 @@ function SecurityContent() {
     if (err) {
       setError(err.message);
     } else {
+      if (user) await supabase.from("profiles").update({ must_change_password: false }).eq("id", user.id);
+      await refreshProfile();
       toast.success("Password changed successfully");
       setForm({ next: "", confirm: "" });
     }

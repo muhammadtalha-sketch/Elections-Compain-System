@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   UserPlus, MoreHorizontal, Shield, Eye,
   Search, CheckCircle2, XCircle, Loader2, AlertCircle, RefreshCw,
-  Ban, KeyRound, X,
+  Ban, KeyRound, X, Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,63 +31,43 @@ const AVATAR_COLORS = [
   "from-indigo-500 to-indigo-600",
 ];
 
-function getRolesForEditor(editorRole: UserRole | null): UserRole[] {
-  if (editorRole === 'Super Admin') return ASSIGNABLE_ROLES; // Admin | User
-  if (editorRole === 'Admin')       return ['User'];           // Admin can only set User role
-  return [];
-}
-
-function canEditUser(editorRole: UserRole | null, targetUser: Profile): boolean {
-  if (isSuperAdmin(targetUser.email)) return false;           // Super Admin is untouchable
-  if (editorRole === 'Super Admin')   return true;
-  if (editorRole === 'Admin')         return targetUser.role !== 'Admin'; // Admins can't touch other Admins
-  return false;
+async function callAdminApi(path: string, method: string, body?: unknown) {
+  const res = await fetch(`/api/admin/users${path}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error ?? "Request failed");
+  return json;
 }
 
 // ─── Create User Dialog ────────────────────────────────────────────────────────
 
-interface CreateUserDialogProps {
-  onClose: () => void;
-}
-
-function CreateUserDialog({ onClose }: CreateUserDialogProps) {
-  const [form, setForm]     = useState({ name: "", email: "", role: "User" as UserRole });
-  const [busy, setBusy]     = useState(false);
-  const [err, setErr]       = useState("");
+function CreateUserDialog({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({ fullName: "", email: "", password: "", role: "Admin" as UserRole });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr]   = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.email) { setErr("Email is required"); return; }
+    if (!form.fullName || !form.email || !form.password) { setErr("All fields are required"); return; }
     setBusy(true);
     setErr("");
-
-    // Create with a random temp password — user must reset it
-    const tempPassword = crypto.randomUUID();
-    const { data, error: signUpErr } = await supabase.auth.signUp({
-      email:    form.email.toLowerCase().trim(),
-      password: tempPassword,
-      options:  { data: { full_name: form.name.trim() } },
-    });
-
-    if (signUpErr) { setErr(signUpErr.message); setBusy(false); return; }
-
-    if (data.user) {
-      await supabase.from("profiles").upsert({
-        id:        data.user.id,
-        full_name: form.name.trim() || null,
-        email:     form.email.toLowerCase().trim(),
-        role:      form.role,
-        is_active: true,
-      }, { onConflict: "id" });
-
-      // Immediately send a password reset so the new user can set their own password
-      await supabase.auth.resetPasswordForEmail(form.email.toLowerCase().trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+    try {
+      await callAdminApi("", "POST", {
+        fullName: form.fullName.trim(),
+        email: form.email.toLowerCase().trim(),
+        password: form.password,
+        role: form.role,
       });
+      toast.success(`User created. Share the password with ${form.email} directly — they can change it after logging in.`);
+      onClose();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to create user");
+    } finally {
+      setBusy(false);
     }
-
-    toast.success(`User created. A password setup email was sent to ${form.email}.`);
-    onClose();
   };
 
   return (
@@ -111,12 +91,13 @@ function CreateUserDialog({ onClose }: CreateUserDialogProps) {
 
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-foreground block mb-1.5">Full Name</label>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">Full Name <span className="text-destructive">*</span></label>
               <Input
                 placeholder="e.g. Jane Doe"
-                value={form.name}
-                onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                value={form.fullName}
+                onChange={e => setForm(p => ({ ...p, fullName: e.target.value }))}
                 className="h-9 text-sm"
+                required
               />
             </div>
             <div>
@@ -131,6 +112,19 @@ function CreateUserDialog({ onClose }: CreateUserDialogProps) {
               />
             </div>
             <div>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">Password <span className="text-destructive">*</span></label>
+              <Input
+                type="text"
+                placeholder="Initial password (min 8 chars)"
+                value={form.password}
+                onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                className="h-9 text-sm"
+                minLength={8}
+                required
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Share this with the user directly. They can change it after logging in.</p>
+            </div>
+            <div>
               <label className="text-xs font-semibold text-foreground block mb-1.5">Role</label>
               <select
                 value={form.role}
@@ -139,7 +133,6 @@ function CreateUserDialog({ onClose }: CreateUserDialogProps) {
               >
                 {ASSIGNABLE_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
-              <p className="text-[10px] text-muted-foreground mt-1">The user will receive a password setup email.</p>
             </div>
 
             {err && (
@@ -165,17 +158,98 @@ function CreateUserDialog({ onClose }: CreateUserDialogProps) {
   );
 }
 
+// ─── Reset Password Dialog ──────────────────────────────────────────────────────
+
+function ResetPasswordDialog({ user, onClose }: { user: Profile; onClose: () => void }) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr]   = useState("");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 8) { setErr("Minimum 8 characters"); return; }
+    setBusy(true);
+    setErr("");
+    try {
+      await callAdminApi(`/${user.id}/reset-password`, "POST", { password });
+      toast.success(`Password reset for ${user.email}. Share the new password with them directly.`);
+      onClose();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to reset password");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+          onClick={e => e.stopPropagation()}
+          className="bg-card rounded-2xl shadow-xl border border-border w-full max-w-sm p-6"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-bold text-foreground">Reset Password — {user.full_name ?? user.email}</h2>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1.5">New Temporary Password</label>
+              <Input
+                type="text"
+                placeholder="Min 8 characters"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="h-9 text-sm"
+                minLength={8}
+                required
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">The user will be required to change this after logging in.</p>
+            </div>
+
+            {err && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
+                <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                {err}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-1">
+              <Button type="button" variant="outline" className="flex-1 h-9 text-sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={busy} className="flex-1 h-9 text-sm gap-1.5">
+                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
+                {busy ? "Saving…" : "Reset Password"}
+              </Button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 // ─── Main Table ────────────────────────────────────────────────────────────────
 
 export function UsersTable() {
   const { user: currentUser, role: currentRole } = useAuth();
   const [users,      setUsers]      = useState<Profile[]>([]);
-  const [loading,    setLoading]    = useState(true);
+  const [loading,    setLoading]    = useState(can(currentRole, "manageUsers"));
   const [error,      setError]      = useState<string | null>(null);
   const [search,     setSearch]     = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [resetTarget, setResetTarget] = useState<Profile | null>(null);
 
-  const canManage = can(currentRole, "manageUsers");
+  const canManage = can(currentRole, "manageUsers"); // Super Admin only
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -189,30 +263,42 @@ export function UsersTable() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (canManage) load(); }, [load, canManage]);
+
+  if (!can(currentRole, "viewUsers")) {
+    return (
+      <div className="bg-card border border-border rounded-2xl shadow-sm p-10 flex flex-col items-center justify-center gap-3 text-center">
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+          <Lock className="w-5 h-5 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">Access restricted</p>
+        <p className="text-xs text-muted-foreground max-w-xs">
+          Only Super Admin can view or manage system user accounts.
+        </p>
+      </div>
+    );
+  }
 
   const handleRoleChange = async (userId: string, role: UserRole) => {
-    const { error: err } = await supabase.from("profiles").update({ role }).eq("id", userId);
-    if (err) { toast.error(err.message); return; }
-    toast.success("Role updated");
-    setUsers(p => p.map(u => u.id === userId ? { ...u, role } : u));
+    try {
+      await callAdminApi(`/${userId}`, "PATCH", { role });
+      toast.success("Role updated");
+      setUsers(p => p.map(u => u.id === userId ? { ...u, role } : u));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update role");
+    }
   };
 
   const handleToggleActive = async (u: Profile) => {
     if (isSuperAdmin(u.email)) { toast.error("The Super Admin account cannot be deactivated."); return; }
     const next = !u.is_active;
-    const { error: err } = await supabase.from("profiles").update({ is_active: next }).eq("id", u.id);
-    if (err) { toast.error(err.message); return; }
-    toast.success(next ? "User activated" : "User deactivated");
-    setUsers(p => p.map(x => x.id === u.id ? { ...x, is_active: next } : x));
-  };
-
-  const handleResetPassword = async (email: string) => {
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (err) { toast.error(err.message); return; }
-    toast.success(`Password reset email sent to ${email}`);
+    try {
+      await callAdminApi(`/${u.id}`, "PATCH", { is_active: next });
+      toast.success(next ? "User activated" : "User deactivated");
+      setUsers(p => p.map(x => x.id === u.id ? { ...x, is_active: next } : x));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update status");
+    }
   };
 
   const filtered = users.filter(u =>
@@ -248,6 +334,7 @@ export function UsersTable() {
   return (
     <>
       {showCreate && <CreateUserDialog onClose={() => { setShowCreate(false); load(); }} />}
+      {resetTarget && <ResetPasswordDialog user={resetTarget} onClose={() => setResetTarget(null)} />}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -306,9 +393,8 @@ export function UsersTable() {
               <tbody>
                 {filtered.map((u, idx) => {
                   const isSelf    = u.id === currentUser?.id;
-                  const editable  = canManage && !isSelf && canEditUser(currentRole, u);
-                  const roleOpts  = getRolesForEditor(currentRole);
                   const superUser = isSuperAdmin(u.email);
+                  const editable  = canManage && !isSelf && !superUser;
 
                   return (
                     <motion.tr
@@ -341,7 +427,7 @@ export function UsersTable() {
                       <td className="px-4 py-3 text-muted-foreground">{u.email ?? "—"}</td>
                       <td className="px-4 py-3 font-mono text-muted-foreground">{u.phone ?? "—"}</td>
                       <td className="px-4 py-3">
-                        {editable && roleOpts.length > 0 && !superUser ? (
+                        {editable ? (
                           <select
                             value={u.role}
                             onChange={e => handleRoleChange(u.id, e.target.value as UserRole)}
@@ -350,7 +436,7 @@ export function UsersTable() {
                               ROLE_BADGE[u.role] ?? ""
                             )}
                           >
-                            {roleOpts.map(r => <option key={r} value={r}>{r}</option>)}
+                            {ASSIGNABLE_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                           </select>
                         ) : (
                           <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold", ROLE_BADGE[u.role] ?? "")}>
@@ -379,12 +465,12 @@ export function UsersTable() {
                             <DropdownMenuItem className="text-xs gap-2 cursor-pointer" onClick={() => toast.info(`Viewing ${u.full_name ?? u.email}`)}>
                               <Eye className="w-3 h-3" /> View Profile
                             </DropdownMenuItem>
-                            {canManage && u.email && (
-                              <DropdownMenuItem className="text-xs gap-2 cursor-pointer" onClick={() => handleResetPassword(u.email!)}>
+                            {canManage && !superUser && (
+                              <DropdownMenuItem className="text-xs gap-2 cursor-pointer" onClick={() => setResetTarget(u)}>
                                 <KeyRound className="w-3 h-3" /> Reset Password
                               </DropdownMenuItem>
                             )}
-                            {editable && !superUser && (
+                            {editable && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

@@ -1,6 +1,6 @@
 export type Gender = "Male" | "Female";
 
-export type Role = "Super Admin" | "Admin" | "User";
+export type Role = "Super Admin" | "Admin";
 
 export type MemberStatus = "Active" | "Pending" | "Inactive";
 
